@@ -3,6 +3,8 @@ import * as WebSocket from 'ws';
 import {RemoteConsoleTransmissionType, WSConRemoteConsole} from "./remote-console-connection";
 import {WSConCentralSystem} from "./websocket-connection-centralsystem";
 import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from "./state-service";
+import * as PromiseFtp from "promise-ftp";
+import * as fs from 'fs';
 
 const debug = Debug('ocpp-chargepoint-simulator:simulator:ChargepointOcpp16Json');
 
@@ -403,6 +405,77 @@ export class ChargepointOcpp16Json {
       request: req,
       next: next
     });
+  }
+
+  ftpUploadDummyFile(fileLocation: string, fileName: string): Promise<void> {
+    const {user, password, host, remotePath, localPath} = this.extracted(fileLocation, false);
+    fs.writeFileSync(localPath + "/" + fileName, "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.");
+    return new Promise((resolve, reject) => {
+      const ftp = new PromiseFtp();
+      ftp.connect({host, user, password})
+        .then(() => ftp.put(localPath + "/" + fileName, remotePath + "/" + fileName))
+        .then(() => {
+          ftp.end(); // if we return this Promise, (at least locally) it will never resolve/reject
+        })
+        .then(() => resolve())
+        .catch((err) => reject(err));
+    });
+  }
+
+  ftpDownload(fileLocation: string): Promise<string> {
+    const {user, password, host, localPath, remotePath, fileName} = this.extracted(fileLocation, true);
+    return new Promise((resolve, reject) => {
+      const ftp = new PromiseFtp();
+      ftp.connect({host, user, password})
+        .then(() => ftp.get(remotePath + "/" + fileName))
+        .then((stream) => {
+          return new Promise((resolve, reject) => {
+            stream.once('close', resolve);
+            stream.once('error', reject);
+            stream.pipe(fs.createWriteStream(localPath + "/" + fileName));
+          });
+        })
+        .then(() => {
+          ftp.end();
+        })
+        .then(() => resolve(localPath + "/" + fileName))
+        .catch((err) => reject(err));
+    });
+  }
+
+  private extracted(fileLocation: string, withFilename: boolean) {
+    let fileLocTmp = fileLocation.substr("ftp://".length);
+    const user = fileLocTmp.substr(0, fileLocTmp.indexOf(':'));
+    fileLocTmp = fileLocTmp.substr(fileLocTmp.indexOf(':') + 1);
+    const password = fileLocTmp.substr(0, fileLocTmp.indexOf('@'));
+    fileLocTmp = fileLocTmp.substr(fileLocTmp.indexOf('@') + 1);
+    let fileName = '';
+    let remotePath = '';
+    let host;
+    if (fileLocTmp.indexOf('/') > -1) {
+      host = fileLocTmp.substr(0, fileLocTmp.indexOf('/'));
+      fileLocTmp = fileLocTmp.substr(fileLocTmp.indexOf('/') + 1);
+      if (withFilename) {
+        if (fileLocTmp.indexOf('/') > -1) {
+          remotePath = fileLocTmp.substr(0, fileLocTmp.lastIndexOf('/'));
+          fileLocTmp = fileLocTmp.substr(fileLocTmp.lastIndexOf('/') + 1);
+          fileName = fileLocTmp;
+        } else {
+          fileName = fileLocTmp;
+        }
+      } else {
+        remotePath = fileLocTmp;
+      }
+    } else {
+      host = fileLocTmp;
+    }
+    debug(`ftp credentials: user=${user}, password.length=${password.length}, host=${host}, fileName=${fileName}, remotePath=${remotePath}`);
+    const localPath = fs.mkdtempSync('ocpp-simulator') + '/' + remotePath;
+    if (!fs.existsSync(localPath)) {
+      fs.mkdirSync(localPath, {recursive: true});
+    }
+    debug(`ftp credentials: user=${user}, password.length=${password.length}, host=${host}, fileName=${fileName}, remotePath=${remotePath}, localPath=${localPath}`);
+    return {user, password, host, localPath, fileName, remotePath};
   }
 
 }

@@ -7,7 +7,7 @@ define(function (require) {
         JavaScript scripting
       </p>
       <a class="panel-block is-active">
-        <textarea class="textarea" rows="25" withspellcheck="false" v-model="inputText"></textarea>
+        <textarea class="textarea" rows="15" withspellcheck="false" v-model="inputText"></textarea>
       </a>
       <div class="panel-block">
         <button class="button is-fullwidth is-primary" v-on:click="sendToServer" >

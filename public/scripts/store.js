@@ -28,19 +28,21 @@ define(function (require) {
           'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
           'cp.answerGetDiagnostics( async (request) => {\n' +
-          '    cp.sendResponse(request.uniqueId, {fileName: "foo.tar.gz"});\n' +
+          '    const fileName = "foo." + new Date().toISOString() + ".txt";\n' +
+          '    cp.sendResponse(request.uniqueId, {fileName});\n' +
+          '    await cp.sendDiagnosticsStatusNotification({status: "Idle"});\n' +
           '    await cp.sleep(5000);\n' +
           '    await cp.sendDiagnosticsStatusNotification({status: "Uploading"});\n' +
-          '    await cp.sleep(5000);\n' +
+          '    await cp.ftpUploadDummyFile(request.payload.location, fileName);\n' +
           '    await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});\n' +
-          '});' +
+          '});\n' +
           'cp.answerUpdateFirmware( async (request) => {\n' +
           '    cp.sendResponse(request.uniqueId, {});\n' +
-          '    await cp.sleep(5000);\n' +
           '    await cp.sendFirmwareStatusNotification({status: "Idle"});\n' +
           '    await cp.sleep(5000);\n' +
           '    await cp.sendFirmwareStatusNotification({status: "Downloading"});\n' +
-          '    await cp.sleep(5000);\n' +
+          '    const file = await cp.ftpDownload(request.payload.location);\n' +
+          '    cp.log("file downloaded to: " + file);\n' +
           '    await cp.sendFirmwareStatusNotification({status: "Downloaded"});\n' +
           '    await cp.sleep(5000);\n' +
           '    await cp.sendFirmwareStatusNotification({status: "Installing"});\n' +
