@@ -23,7 +23,14 @@ define(function (require) {
           'await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
           'await cp.sendHeartbeat(); setInterval(() => cp.sendHeartbeat(), 60000);\n' +
           'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
-          'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n';
+          'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
+          'cp.answerGetDiagnostics( async (request) => {\n' +
+          '    cp.sendResponse(request.uniqueId, {fileName: "foo.tar.gz"});\n' +
+          '    await cp.sleep(1000);\n' +
+          '    await cp.sendDiagnosticsStatusNotification({status: "Uploading"});\n' +
+          '    await cp.sleep(1000);\n' +
+          '    await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});\n' +
+          '});';
       },
       bootnotification(state) {
         state.inputText += 'await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n';

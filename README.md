@@ -46,6 +46,13 @@ module.exports = async (connect) => {
     await cp.sendHeartbeat();
     await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});
     await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
+    cp.answerGetDiagnostics( async (request) => {
+        cp.sendResponse(request.uniqueId, {fileName: "foo.tar.gz"});
+        await cp.sleep(1000);
+        await cp.sendDiagnosticsStatusNotification({status: "Uploading"});
+        await cp.sleep(1000);
+        await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});
+    });
   } catch (err) {
     console.log(err);
   } finally {
@@ -93,6 +100,7 @@ DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
 * StartTransaction
 * StopTransaction
 * MeterValues
+* Get Diagnostics
 
 ### Not supported (yet)
 
@@ -108,7 +116,6 @@ DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
 * Data Transfer
 * Get Composite Schedule
 * Get Configuration
-* Get Diagnostics
 * Get Local List Version
 * Remote Start Transaction
 * Remote Stop Transaction

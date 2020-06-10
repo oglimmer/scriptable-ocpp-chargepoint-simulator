@@ -6,12 +6,6 @@ import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from "./stat
 
 const debug = Debug('ocpp-chargepoint-simulator:simulator:ChargepointOcpp16Json');
 
-interface MessageListenerElement {
-  request: OcppRequest;
-
-  next(resp: object): void;
-}
-
 enum MessageType {
   CALL = 2,
   CALLRESULT = 3,
@@ -34,6 +28,10 @@ function ocppReqToArray(req: OcppRequest): Array<string | number | Payload> {
   return [req.messageTypeId, req.uniqueId, req.action, req.payload];
 }
 
+function ocppResToArray(resp: OcppResponse): Array<string | number | Payload> {
+  return [resp.messageTypeId, resp.uniqueId, resp.payload];
+}
+
 interface OcppRequest {
   messageTypeId: MessageType;
   uniqueId: string;
@@ -45,6 +43,12 @@ interface OcppResponse {
   messageTypeId: MessageType;
   uniqueId: string;
   payload?: object;
+}
+
+interface MessageListenerElement {
+  request: OcppRequest;
+
+  next(resp: Payload): void;
 }
 
 interface BootNotificationPayload extends Payload {
@@ -136,6 +140,24 @@ interface MeterValuesPayload extends Payload {
   meterValue: Array<TransactionData>
 }
 
+/*
+interface GetDiagnosticsPayload extends Payload {
+  location: string,
+  retries?: number,
+  retryInterval?: number,
+  startTime?: string,
+  stopTime?: string
+}
+
+interface GetDiagnosticsResponse {
+  fileName?: string
+}
+*/
+
+interface DiagnosticsStatusNotificationPayload {
+  status: string
+}
+
 /**
  * Implements an OCPP 1.6 JSON speaking Chargepoint. Provides API for a Chargepoint.
  * Should not access WebSocket-API directly.
@@ -146,6 +168,8 @@ export class ChargepointOcpp16Json {
 
   private openRequests: Array<MessageListenerElement> = [];
   private wsConCentralSystem: WSConCentralSystem;
+
+  private registeredCallbacks: Map<string, (Payload) => void> = new Map();
 
   constructor(readonly id: number) {
   }
@@ -218,7 +242,7 @@ export class ChargepointOcpp16Json {
   }
 
   stopTransaction(payload: StopTransactionPayload): Promise<StopTransactionResponse> {
-    debug('sendStopTransaction')
+    debug('sendStopTransaction');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -228,7 +252,7 @@ export class ChargepointOcpp16Json {
   }
 
   meterValues(payload: MeterValuesPayload): Promise<void> {
-    debug('sendMeterValues')
+    debug('sendMeterValues');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -237,20 +261,47 @@ export class ChargepointOcpp16Json {
     });
   }
 
+  answerGetDiagnostics(cb: (request: OcppRequest) => void): void {
+    debug('answerGetDiagnostics');
+    this.registeredCallbacks.set("GetDiagnostics", cb);
+  }
+
+  sendDiagnosticsStatusNotification(payload: DiagnosticsStatusNotificationPayload): Promise<void> {
+    debug('sendDiagnosticsStatusNotification');
+    return this.sendOcpp({
+      messageTypeId: MessageType.CALL,
+      uniqueId: uuidv4(),
+      action: 'DiagnosticsStatusNotification',
+      payload
+    });
+  }
+
   onMessage(rawOcppMessage: string): void {
     debug(`received: ${rawOcppMessage}`);
     const ocppMessage = JSON.parse(rawOcppMessage);
-    const ocppResponse = {
-      messageTypeId: ocppMessage[0],
-      uniqueId: ocppMessage[1],
-      payload: ocppMessage[2],
-    }
-    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName) as Array<WSConRemoteConsole>;
-    wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, ocppResponse))
-    if (ocppResponse.messageTypeId == MessageType.CALLRESULT || ocppResponse.messageTypeId == MessageType.CALLERROR) {
+    const messageTypeId = ocppMessage[0] as number;
+    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
+    if (messageTypeId === MessageType.CALLRESULT || messageTypeId === MessageType.CALLERROR) {
+      const ocppResponse = {
+        messageTypeId: ocppMessage[0],
+        uniqueId: ocppMessage[1],
+        payload: ocppMessage[2]
+      }
+      wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, ocppResponse))
       this.triggerRequestResult(ocppResponse);
     } else {
-      console.error("not implemented yet");
+      const ocppRequest = {
+        messageTypeId: ocppMessage[0],
+        uniqueId: ocppMessage[1],
+        action: ocppMessage[2],
+        payload: ocppMessage[3]
+      }
+      wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, ocppRequest))
+      this.registeredCallbacks.forEach((cb, action) => {
+        if (action === ocppRequest.action) {
+          cb(ocppRequest);
+        }
+      });
     }
   }
 
@@ -264,10 +315,22 @@ export class ChargepointOcpp16Json {
         clearTimeout(timeoutHandle);
         resolve(resp);
       });
-      const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName) as Array<WSConRemoteConsole>;
+      const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
       wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, req))
       this.wsConCentralSystem.send(JSON.stringify(ocppReqToArray(req)));
     })
+  }
+
+  sendResponse(uniqueId: string, payload: object): void {
+    debug(`send-back: ${uniqueId} => ${JSON.stringify(payload)}`);
+    const response = {
+      messageTypeId: MessageType.CALLRESULT,
+      uniqueId,
+      payload
+    }
+    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
+    wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, response))
+    this.wsConCentralSystem.send(JSON.stringify(ocppResToArray(response)));
   }
 
   close(): void {
@@ -280,7 +343,7 @@ export class ChargepointOcpp16Json {
     this.openRequests = this.openRequests.filter(e => resp.uniqueId !== e.request.uniqueId);
   }
 
-  registerRequest(req: OcppRequest, next: (resp: OcppResponse) => void): void {
+  registerRequest(req: OcppRequest, next: (resp: Payload) => void): void {
     this.openRequests.push({
       request: req,
       next: next
