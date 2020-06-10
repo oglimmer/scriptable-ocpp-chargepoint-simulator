@@ -20,8 +20,8 @@ define(function (require) {
       },
       startup(state) {
         state.inputText = `cp = await connect(\'ws://localhost:8100/cpoc/PAG/${state.cpName}\');\n` +
-          'await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
-          'await cp.sendHeartbeat(); setInterval(() => cp.sendHeartbeat(), 60000);\n' +
+          'const bootResp = await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
+          'await cp.sendHeartbeat(); setInterval(() => cp.sendHeartbeat(), bootResp.interval * 1000);\n' +
           'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
           'cp.answerGetDiagnostics( async (request) => {\n' +

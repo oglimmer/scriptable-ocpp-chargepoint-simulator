@@ -101,11 +101,11 @@ DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
 * StopTransaction
 * MeterValues
 * Get Diagnostics
+* Diagnostics Status Notification
 
 ### Not supported (yet)
 
 * Data Transfer
-* Diagnostics Status Notification
 * Firmware Status Notification
 
 * Cancel Reservation
