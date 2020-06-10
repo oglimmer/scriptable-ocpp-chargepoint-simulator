@@ -7,7 +7,7 @@ define(function (require) {
 
   return new Vuex.Store({
     state: {
-      inputText: 'cp = await connect(\'ws://localhost:8100/....\');\n',
+      inputText: '',
       wsStatus: '',
       wsStatusLastId: -1,
       wsError: [],
@@ -19,18 +19,35 @@ define(function (require) {
         state.inputText = value;
       },
       startup(state) {
-        state.inputText = `cp = await connect(\'ws://localhost:8100/cpoc/PAG/${state.cpName}\');\n` +
-          'const bootResp = await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
+        let text = '';
+        if(state.wsStatus.startsWith('closed')) {
+          text += `cp = await connect(\'ws://localhost:8100/cpoc/PAG/${state.cpName}\');\n`;
+        }
+        text += 'const bootResp = await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
           'await cp.sendHeartbeat(); setInterval(() => cp.sendHeartbeat(), bootResp.interval * 1000);\n' +
           'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
           'cp.answerGetDiagnostics( async (request) => {\n' +
           '    cp.sendResponse(request.uniqueId, {fileName: "foo.tar.gz"});\n' +
-          '    await cp.sleep(1000);\n' +
+          '    await cp.sleep(5000);\n' +
           '    await cp.sendDiagnosticsStatusNotification({status: "Uploading"});\n' +
-          '    await cp.sleep(1000);\n' +
+          '    await cp.sleep(5000);\n' +
           '    await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});\n' +
-          '});';
+          '});' +
+          'cp.answerUpdateFirmware( async (request) => {\n' +
+          '    cp.sendResponse(request.uniqueId, {});\n' +
+          '    await cp.sleep(5000);\n' +
+          '    await cp.sendFirmwareStatusNotification({status: "Idle"});\n' +
+          '    await cp.sleep(5000);\n' +
+          '    await cp.sendFirmwareStatusNotification({status: "Downloading"});\n' +
+          '    await cp.sleep(5000);\n' +
+          '    await cp.sendFirmwareStatusNotification({status: "Downloaded"});\n' +
+          '    await cp.sleep(5000);\n' +
+          '    await cp.sendFirmwareStatusNotification({status: "Installing"});\n' +
+          '    await cp.sleep(5000);\n' +
+          '    await cp.sendFirmwareStatusNotification({status: "Installed"});\n' +
+          '});\n';
+        state.inputText = text;
       },
       bootnotification(state) {
         state.inputText += 'await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n';
@@ -60,6 +77,9 @@ define(function (require) {
       },
       updateWsStatus(state, value) {
         if (state.wsStatusLastId <= value.id) {
+          if(state.wsStatus === '' && value.description.startsWith('closed')) {
+            state.inputText = `cp = await connect(\'ws://localhost:8100/cpoc/PAG/${state.cpName}\');\n`;
+          }
           state.wsStatus = value.description;
           state.wsStatusLastId = value.id;
         }
@@ -69,7 +89,6 @@ define(function (require) {
       },
       setCpName(state, value) {
         state.cpName = value;
-        state.inputText = `cp = await connect(\'ws://localhost:8100/cpoc/PAG/${value}\');\n`;
       },
       ocppMessages(state, value) {
         const {messageTypeId, uniqueId, action} = value;

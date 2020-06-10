@@ -158,6 +158,19 @@ interface DiagnosticsStatusNotificationPayload {
   status: string
 }
 
+/*
+interface UpdateFirmwarePayload {
+  location: string,
+  retries?: number,
+  retrieveDate: string,
+  retryInterval?: number
+}
+*/
+
+interface FirmwareStatusNotificationPayload {
+  status: string
+}
+
 /**
  * Implements an OCPP 1.6 JSON speaking Chargepoint. Provides API for a Chargepoint.
  * Should not access WebSocket-API directly.
@@ -266,12 +279,27 @@ export class ChargepointOcpp16Json {
     this.registeredCallbacks.set("GetDiagnostics", cb);
   }
 
+  answerUpdateFirmware<T>(cb: (request: OcppRequest<T>) => void): void {
+    debug('answerUpdateFirmware');
+    this.registeredCallbacks.set("UpdateFirmware", cb);
+  }
+
   sendDiagnosticsStatusNotification(payload: DiagnosticsStatusNotificationPayload): Promise<void> {
     debug('sendDiagnosticsStatusNotification');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
       action: 'DiagnosticsStatusNotification',
+      payload
+    });
+  }
+
+  sendFirmwareStatusNotification(payload: FirmwareStatusNotificationPayload): Promise<void> {
+    debug('sendFirmwareStatusNotification');
+    return this.sendOcpp({
+      messageTypeId: MessageType.CALL,
+      uniqueId: uuidv4(),
+      action: 'FirmwareStatusNotification',
       payload
     });
   }

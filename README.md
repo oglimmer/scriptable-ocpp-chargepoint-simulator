@@ -102,12 +102,12 @@ DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
 * MeterValues
 * Get Diagnostics
 * Diagnostics Status Notification
+* Update Firmware
+* Firmware Status Notification
 
 ### Not supported (yet)
 
 * Data Transfer
-* Firmware Status Notification
-
 * Cancel Reservation
 * Change Availability
 * Change Configuration
@@ -125,4 +125,4 @@ DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
 * Set Charging Profile
 * Trigger Message
 * Unlock Connector
-* Update Firmware
+
