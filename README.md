@@ -91,6 +91,44 @@ DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
 
 ## OCPP Operations
 
+### Trigger Message
+
+The simulator will respond to all `Trigger Message` with `status=NotImplemented` if no `answerTriggerMessage` have been
+registered for this `requestedMessage`.
+
+OCPP 1.6 defines those requestedMessage:
+* "BootNotification",
+* "DiagnosticsStatusNotification",
+* "FirmwareStatusNotification",
+* "Heartbeat",
+* "MeterValues",
+* "StatusNotification"
+
+Example for BootNotification
+
+```
+cp.answerTriggerMessage("BootNotification", async (request) => {
+    cp.sendResponse(request.uniqueId, {status: "Accepted"});
+    cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
+});
+```
+
+Another example for DiagnosticsStatusNotification
+
+```
+// your code for handling GetDiagnostics will need to update a variable
+// currentDiagnosticsStatus with the current state
+cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
+    if(currentDiagnosticsStatus) {
+        cp.sendResponse(request.uniqueId, {status: "Accepted"});
+        cp.sendDiagnosticsStatusNotification({status: currentDiagnosticsStatus});
+    } else {
+        cp.sendResponse(request.uniqueId, {status: "Rejected"});
+    }
+});
+``` 
+ 
+
 ### Supported
 
 * BootNotification
@@ -104,6 +142,7 @@ DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
 * Diagnostics Status Notification
 * Update Firmware
 * Firmware Status Notification
+* Trigger Message
 
 ### Not supported (yet)
 
@@ -123,6 +162,5 @@ DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
 * Reset
 * Send Local List
 * Set Charging Profile
-* Trigger Message
 * Unlock Connector
 

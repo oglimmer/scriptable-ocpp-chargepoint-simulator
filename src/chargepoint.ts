@@ -140,7 +140,7 @@ interface MeterValuesPayload extends Payload {
   meterValue: Array<TransactionData>
 }
 
-/*
+
 interface GetDiagnosticsPayload extends Payload {
   location: string,
   retries?: number,
@@ -148,7 +148,7 @@ interface GetDiagnosticsPayload extends Payload {
   startTime?: string,
   stopTime?: string
 }
-
+/*
 interface GetDiagnosticsResponse {
   fileName?: string
 }
@@ -158,17 +158,20 @@ interface DiagnosticsStatusNotificationPayload {
   status: string
 }
 
-/*
 interface UpdateFirmwarePayload {
   location: string,
   retries?: number,
   retrieveDate: string,
   retryInterval?: number
 }
-*/
 
 interface FirmwareStatusNotificationPayload {
   status: string
+}
+
+interface TriggerMessagePayload {
+  requestedMessage: string,
+  connectorId?: number
 }
 
 /**
@@ -182,9 +185,11 @@ export class ChargepointOcpp16Json {
   private openRequests: Array<MessageListenerElement<Payload>> = [];
   private wsConCentralSystem: WSConCentralSystem;
 
-  private registeredCallbacks: Map<string, (Payload) => void> = new Map();
+  private registeredCallbacks: Map<string, (OcppRequest) => void> = new Map();
+  private registeredCallbacksTriggerMessage: Map<string, (OcppRequest) => void> = new Map();
 
   constructor(readonly id: number) {
+    this.buildTriggerMessage();
   }
 
   log(output: (string | object)): void {
@@ -274,14 +279,36 @@ export class ChargepointOcpp16Json {
     });
   }
 
-  answerGetDiagnostics<T>(cb: (request: OcppRequest<T>) => void): void {
+  answerGetDiagnostics<T>(cb: (request: OcppRequest<GetDiagnosticsPayload>) => void): void {
     debug('answerGetDiagnostics');
     this.registeredCallbacks.set("GetDiagnostics", cb);
   }
 
-  answerUpdateFirmware<T>(cb: (request: OcppRequest<T>) => void): void {
+  answerUpdateFirmware<T>(cb: (request: OcppRequest<UpdateFirmwarePayload>) => void): void {
     debug('answerUpdateFirmware');
     this.registeredCallbacks.set("UpdateFirmware", cb);
+  }
+
+  answerTriggerMessage<T>(requestedMessage: string, cb: (request: OcppRequest<TriggerMessagePayload>) => void): void {
+    debug('answerTriggerMessage');
+    this.registeredCallbacksTriggerMessage.set(requestedMessage, cb);
+    this.buildTriggerMessage();
+  }
+
+  buildTriggerMessage(): void {
+    const triggerMessageCallBack = (request: OcppRequest<TriggerMessagePayload>): void => {
+      let requestedMethodRegistered = false;
+      this.registeredCallbacksTriggerMessage.forEach((cb, requestedMessage) => {
+        if (request.payload.requestedMessage === requestedMessage) {
+          requestedMethodRegistered = true;
+          cb(request);
+        }
+      })
+      if (!requestedMethodRegistered) {
+        this.sendResponse(request.uniqueId, {status: "NotImplemented"});
+      }
+    };
+    this.registeredCallbacks.set("TriggerMessage", triggerMessageCallBack);
   }
 
   sendDiagnosticsStatusNotification(payload: DiagnosticsStatusNotificationPayload): Promise<void> {
