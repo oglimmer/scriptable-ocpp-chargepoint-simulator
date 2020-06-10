@@ -24,29 +24,29 @@ interface Payload {
 
 }
 
-function ocppReqToArray(req: OcppRequest): Array<string | number | Payload> {
+function ocppReqToArray<T>(req: OcppRequest<T>): Array<string | number | Payload> {
   return [req.messageTypeId, req.uniqueId, req.action, req.payload];
 }
 
-function ocppResToArray(resp: OcppResponse): Array<string | number | Payload> {
+function ocppResToArray<T>(resp: OcppResponse<T>): Array<string | number | Payload> {
   return [resp.messageTypeId, resp.uniqueId, resp.payload];
 }
 
-interface OcppRequest {
+interface OcppRequest<T> {
   messageTypeId: MessageType;
   uniqueId: string;
   action: string;
-  payload?: object;
+  payload?: T;
 }
 
-interface OcppResponse {
+interface OcppResponse<T> {
   messageTypeId: MessageType;
   uniqueId: string;
-  payload?: object;
+  payload?: T;
 }
 
-interface MessageListenerElement {
-  request: OcppRequest;
+interface MessageListenerElement<T> {
+  request: OcppRequest<T>;
 
   next(resp: Payload): void;
 }
@@ -166,7 +166,7 @@ export class ChargepointOcpp16Json {
 
   private readonly RESPONSE_TIMEOUT = 15000;
 
-  private openRequests: Array<MessageListenerElement> = [];
+  private openRequests: Array<MessageListenerElement<Payload>> = [];
   private wsConCentralSystem: WSConCentralSystem;
 
   private registeredCallbacks: Map<string, (Payload) => void> = new Map();
@@ -261,7 +261,7 @@ export class ChargepointOcpp16Json {
     });
   }
 
-  answerGetDiagnostics(cb: (request: OcppRequest) => void): void {
+  answerGetDiagnostics<T>(cb: (request: OcppRequest<T>) => void): void {
     debug('answerGetDiagnostics');
     this.registeredCallbacks.set("GetDiagnostics", cb);
   }
@@ -305,7 +305,7 @@ export class ChargepointOcpp16Json {
     }
   }
 
-  sendOcpp<T>(req: OcppRequest): Promise<T> {
+  sendOcpp<T, U>(req: OcppRequest<U>): Promise<T> {
     debug(`send: ${JSON.stringify(req)}`);
     return new Promise((resolve: (T) => void, reject: (string) => void) => {
       const timeoutHandle = setTimeout(() => {
@@ -338,12 +338,12 @@ export class ChargepointOcpp16Json {
     this.wsConCentralSystem = null;
   }
 
-  triggerRequestResult(resp: OcppResponse): void {
+  triggerRequestResult<T>(resp: OcppResponse<T>): void {
     this.openRequests.filter(e => resp.uniqueId === e.request.uniqueId).forEach(e => e.next(resp.payload));
     this.openRequests = this.openRequests.filter(e => resp.uniqueId !== e.request.uniqueId);
   }
 
-  registerRequest(req: OcppRequest, next: (resp: Payload) => void): void {
+  registerRequest<T>(req: OcppRequest<T>, next: (resp: Payload) => void): void {
     this.openRequests.push({
       request: req,
       next: next
