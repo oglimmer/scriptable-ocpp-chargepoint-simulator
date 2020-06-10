@@ -21,7 +21,7 @@ define(function (require) {
       startup(state) {
         state.inputText = `cp = await connect(\'ws://localhost:8100/cpoc/PAG/${state.cpName}\');\n` +
           'await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
-          'await cp.sendHeartbeat();\n' +
+          'await cp.sendHeartbeat(); setInterval(() => cp.sendHeartbeat(), 60000);\n' +
           'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n';
       },
@@ -29,7 +29,7 @@ define(function (require) {
         state.inputText += 'await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n';
       },
       heartbeat(state) {
-        state.inputText += 'await cp.sendHeartbeat();\n';
+        state.inputText += 'await cp.sendHeartbeat(); setInterval(() => cp.sendHeartbeat(), 60000);\n';
       },
       statusNotification(state) {
         state.inputText += 'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
@@ -40,13 +40,16 @@ define(function (require) {
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Preparing"});\n';
       },
       startTransaction(state) {
-        state.inputText += 'const transaction = await cp.startTransaction({connectorId: 1, idTag: "ccc", meterStart: 1377, timestamp: "' + new Date().toISOString() + '"});\n';
+        state.inputText += 'cp.transaction = await cp.startTransaction({connectorId: 1, idTag: "ccc", meterStart: 1377, timestamp: "' + new Date().toISOString() + '"});\n' +
+          'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Charging"});\n';
       },
       stopTransaction(state) {
-        state.inputText += 'await cp.stopTransaction({transactionId: transaction.transactionId, meterStop: 1399, timestamp: "' + new Date().toISOString() + '"});\n';
+        state.inputText += 'await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "' + new Date().toISOString() + '"});\n' +
+          'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});\n' +
+          'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n';
       },
       meterValues(state) {
-        state.inputText += 'await cp.meterValues({connectorId: 1, idTag: "ccc", meterStart: 1387, timestamp: "' + new Date().toISOString() + '"});\n';
+        state.inputText += 'await cp.meterValues({connectorId: 1, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: "' + new Date().toISOString() + '", sampledValue: [{value: 1387}] }]});\n';
       },
       updateWsStatus(state, value) {
         if (state.wsStatusLastId <= value.id) {

@@ -9,32 +9,33 @@ export enum RemoteConsoleTransmissionType {
   WS_ERROR
 }
 
+const debugWSConRemoteConsole = Debug('ocpp-chargepoint-simulator:simulator:WSConRemoteConsole');
+const debugWSServerRemoteConsole = Debug('ocpp-chargepoint-simulator:simulator:WSServerRemoteConsole');
+
 /**
  * Holds and manages the WS communication to the remote-console (usually a browser)
  */
 export class WSConRemoteConsole {
 
-  debug = Debug('ocpp-chargepoint-simulator:simulator:WSConRemoteConsole');
-
   constructor(private readonly ws: WebSocket, private readonly cpName: string) {
-    ws.on('message', this.onMessage);
-    ws.on('close', this.onClose);
-    this.debug(`Registered ${cpName}`);
+    ws.on('message', this.onMessage.bind(this));
+    ws.on('close', this.onClose.bind(this));
+    debugWSConRemoteConsole(`Registered ${cpName}`);
   }
 
   onMessage(message): void {
-    this.debug('received: %s', message);
+    debugWSConRemoteConsole('received: %s', message);
   };
 
   onClose(): void {
-    this.debug('close: %s', this.cpName);
+    debugWSConRemoteConsole('close: %s', this.cpName);
     wsConRemoteConsoleRepository.remove(this.cpName, this);
   };
 
   add(type: RemoteConsoleTransmissionType, payload: string | object): void {
     const connectedClients = wsConRemoteConsoleRepository.get(this.cpName);
     if (!connectedClients) {
-      this.debug(`Trying to send msg to ${this.cpName} but no connected client.`);
+      debugWSConRemoteConsole(`Trying to send msg to ${this.cpName} but no connected client.`);
       return;
     }
     connectedClients.forEach((e: WSConRemoteConsole) => {
@@ -65,13 +66,11 @@ class WSServerRemoteConsole {
 
   private readonly wss: WebSocket.Server;
 
-  debug = Debug('ocpp-chargepoint-simulator:simulator:WSServerRemoteConsole');
-
   constructor(host: string, port: number) {
     port++;
     this.wss = new WebSocket.Server({port, host});
-    this.wss.on('connection', this.onNewConnection);
-    this.debug(`WSServerRemoteConsole listening on ${host}:${port}`);
+    this.wss.on('connection', this.onNewConnection.bind(this));
+    debugWSServerRemoteConsole(`WSServerRemoteConsole listening on ${host}:${port}`);
   };
 
   onNewConnection(ws: WebSocket, req: http.IncomingMessage): void {

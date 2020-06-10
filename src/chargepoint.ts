@@ -155,6 +155,12 @@ export class ChargepointOcpp16Json {
     wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_ERROR, output));
   }
 
+  sleep(millis: number): Promise<void> {
+    return new Promise<void>((resolve) => {
+      setTimeout(resolve, millis);
+    })
+  }
+
   connect(url: string): Promise<ChargepointOcpp16Json> {
     debug('connect');
     this.wsConCentralSystem = new WSConCentralSystem(url, this);
