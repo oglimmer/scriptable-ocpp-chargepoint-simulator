@@ -48,6 +48,11 @@ define(function (require) {
           '    await cp.sendFirmwareStatusNotification({status: "Installing"});\n' +
           '    await cp.sleep(5000);\n' +
           '    await cp.sendFirmwareStatusNotification({status: "Installed"});\n' +
+          '});\n' +
+          'cp.answerReset(async (request) => {\n' +
+          '    cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
+          '    cp.log("RESET ***boing-boing-boing*** " + request.payload.type);\n' +
+          '    await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
           '});\n';
         state.inputText = text;
       },

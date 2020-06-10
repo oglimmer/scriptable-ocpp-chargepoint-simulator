@@ -160,21 +160,31 @@ interface DiagnosticsStatusNotificationPayload {
   status: string
 }
 
-interface UpdateFirmwarePayload {
+interface UpdateFirmwarePayload extends Payload {
   location: string,
   retries?: number,
   retrieveDate: string,
   retryInterval?: number
 }
 
-interface FirmwareStatusNotificationPayload {
+interface FirmwareStatusNotificationPayload extends Payload {
   status: string
 }
 
-interface TriggerMessagePayload {
+interface TriggerMessagePayload extends Payload {
   requestedMessage: string,
   connectorId?: number
 }
+
+interface ResetPayload extends Payload {
+  type: string
+}
+
+/*
+interface ResetResponse {
+  status: string
+}
+*/
 
 /**
  * Implements an OCPP 1.6 JSON speaking Chargepoint. Provides API for a Chargepoint.
@@ -289,6 +299,11 @@ export class ChargepointOcpp16Json {
   answerUpdateFirmware<T>(cb: (request: OcppRequest<UpdateFirmwarePayload>) => void): void {
     debug('answerUpdateFirmware');
     this.registeredCallbacks.set("UpdateFirmware", cb);
+  }
+
+  answerReset<T>(cb: (request: OcppRequest<ResetPayload>) => void): void {
+    debug('answerReset');
+    this.registeredCallbacks.set("Reset", cb);
   }
 
   answerTriggerMessage<T>(requestedMessage: string, cb: (request: OcppRequest<TriggerMessagePayload>) => void): void {
