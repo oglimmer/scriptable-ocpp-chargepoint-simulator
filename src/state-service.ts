@@ -11,7 +11,7 @@ class StateServiceWsConRemoteConsole {
   public add(cpName: string, wsConRemoteConsole: WSConRemoteConsole): void {
     let arr = this.store.get(cpName);
     if (!arr) {
-      arr = new Array();
+      arr = [];
       this.store.set(cpName, arr);
     }
     arr.push(wsConRemoteConsole);
@@ -25,7 +25,7 @@ class StateServiceWsConRemoteConsole {
     return arr;
   }
 
-  public remove(cpName: string, wsConRemoteConsole: WSConRemoteConsole) {
+  public remove(cpName: string, wsConRemoteConsole: WSConRemoteConsole): void {
     const arr = this.store.get(cpName);
     if (arr) {
       const newArr = arr.filter(e => e !== wsConRemoteConsole);
@@ -55,8 +55,8 @@ class StateServiceWsConCentralSystem {
     return this.store.get(cpName);
   }
 
-  public remove(cpName: string) {
-    return this.store.delete(cpName);
+  public remove(cpName: string): void {
+    this.store.delete(cpName);
   }
 
 }

@@ -5,19 +5,15 @@ import createWSServerRemoteConsole from "../remote-console-connection";
 
 const debug = Debug('ocpp-chargepoint-simulator:express:http');
 
-export default (port: any) => {
+
+export default (bind: string, port: (number | string)): void => {
+
+  expressInit.set('port', port);
+  expressInit.set('bind', bind);
 
   const server = http.createServer(expressInit);
 
-  expressInit.set('port', port);
-
-  server.listen(port);
-  server.on('error', onError);
-  server.on('listening', onListening);
-
-  createWSServerRemoteConsole();
-
-  function onError(error) {
+  function onError(error: NodeJS.ErrnoException): void {
     if (error.syscall !== 'listen') {
       throw error;
     }
@@ -41,12 +37,22 @@ export default (port: any) => {
     }
   }
 
-  function onListening() {
+  function onListening(): void {
     const addr = server.address();
     const bind = typeof addr === 'string'
       ? 'pipe ' + addr
-      : 'port ' + addr.port;
+      : `(${addr.family}) ${addr.address}:${addr.port}`;
     debug('Listening on ' + bind);
   }
+
+  if (typeof port === 'string') {
+    server.listen(port);
+    debug('Could not start WSServerRemoteConsole as server is using pipe bind');
+  } else {
+    server.listen(port, bind);
+    createWSServerRemoteConsole(bind, port);
+  }
+  server.on('error', onError);
+  server.on('listening', onListening);
 
 }

@@ -18,14 +18,19 @@ enum MessageType {
   CALLERROR = 4
 }
 
-function uuidv4() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+function uuidv4(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c: string) {
+    const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
 }
 
-function ocppReqToArray(req: OcppRequest): Array<any> {
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface Payload {
+
+}
+
+function ocppReqToArray(req: OcppRequest): Array<string | number | Payload> {
   return [req.messageTypeId, req.uniqueId, req.action, req.payload];
 }
 
@@ -42,7 +47,7 @@ interface OcppResponse {
   payload?: object;
 }
 
-interface BootNotificationPayload {
+interface BootNotificationPayload extends Payload {
   chargePointVendor: string;
   chargePointModel: string,
   chargePointSerialNumber?: string,
@@ -60,7 +65,7 @@ interface BootNotificationResponse {
   interval: number
 }
 
-interface StatusNotificationPayload {
+interface StatusNotificationPayload extends Payload {
   connectorId: number,
   errorCode: string,
   info?: string,
@@ -70,7 +75,7 @@ interface StatusNotificationPayload {
   vendorErrorCode?: string
 }
 
-interface AuthorizePayload {
+interface AuthorizePayload extends Payload {
   idTag: string
 }
 
@@ -84,7 +89,7 @@ interface AuthorizeResponse {
   idTagInfo?: IdTagInfo
 }
 
-interface StartTransactionPayload {
+interface StartTransactionPayload extends Payload {
   connectorId: number,
   idTag: string,
   meterStart: number,
@@ -112,7 +117,7 @@ interface TransactionData {
   sampledValue: Array<SampledValue>
 }
 
-interface StopTransactionPayload {
+interface StopTransactionPayload extends Payload {
   idTag?: string,
   meterStop: number,
   timestamp: string,
@@ -125,7 +130,7 @@ interface StopTransactionResponse {
   idTagInfo?: IdTagInfo
 }
 
-interface MeterValuesPayload {
+interface MeterValuesPayload extends Payload {
   connectorId: number,
   transactionId?: number,
   meterValue: Array<TransactionData>
@@ -145,9 +150,9 @@ export class ChargepointOcpp16Json {
   constructor(readonly id: number) {
   }
 
-  log(o: any): void {
-    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName) as Array<WSConRemoteConsole>;
-    wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_ERROR, o));
+  log(output: (string | object)): void {
+    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
+    wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_ERROR, output));
   }
 
   connect(url: string): Promise<ChargepointOcpp16Json> {
@@ -243,9 +248,9 @@ export class ChargepointOcpp16Json {
     }
   }
 
-  sendOcpp(req: OcppRequest): Promise<any> {
+  sendOcpp<T>(req: OcppRequest): Promise<T> {
     debug(`send: ${JSON.stringify(req)}`);
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve: (T) => void, reject: (string) => void) => {
       const timeoutHandle = setTimeout(() => {
         reject(`Timeout waiting for ${JSON.stringify(req)}`)
       }, this.RESPONSE_TIMEOUT);
@@ -269,7 +274,7 @@ export class ChargepointOcpp16Json {
     this.openRequests = this.openRequests.filter(e => resp.uniqueId !== e.request.uniqueId);
   }
 
-  registerRequest(req: OcppRequest, next: (resp: object) => void): void {
+  registerRequest(req: OcppRequest, next: (resp: OcppResponse) => void): void {
     this.openRequests.push({
       request: req,
       next: next

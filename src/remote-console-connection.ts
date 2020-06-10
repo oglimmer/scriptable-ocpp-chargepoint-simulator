@@ -3,36 +3,10 @@ import http from "http";
 import Debug from 'debug';
 import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from './state-service';
 
-/**
- * WebSocket Server for server to client communication with Remote-Console
- */
-class WSServerRemoteConsole {
-
-  private readonly wss: WebSocket.Server;
-
-  debug = Debug('ocpp-chargepoint-simulator:simulator:WSServerRemoteConsole');
-
-  constructor() {
-    const port = parseInt(process.env.PORT) + 1 || 3001;
-    this.wss = new WebSocket.Server({port});
-    this.wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
-      this.onNewConnection(ws, req);
-    });
-    this.debug(`WSServerRemoteConsole listening on ${port}`);
-  };
-
-  onNewConnection(ws: WebSocket, req: http.IncomingMessage) {
-    const cpName = req.url.substr(1); // removing leading /
-    let wsConRemoteConsole = new WSConRemoteConsole(ws, cpName);
-    wsConRemoteConsoleRepository.add(cpName, wsConRemoteConsole);
-    const wsConCentralSystem = wsConCentralSystemRepository.get(cpName);
-    const wsStatus = wsConCentralSystem && wsConCentralSystem.ws.readyState == WebSocket.OPEN ? `open (${wsConCentralSystem.url})` : 'closed.';
-    const wsStatusId = wsConCentralSystem ? wsConCentralSystem.api.id : -1;
-    ws.send(JSON.stringify({type: RemoteConsoleTransmissionType.WS_STATUS, payload: {
-        id: wsStatusId,
-        description: wsStatus
-    }}));
-  }
+export enum RemoteConsoleTransmissionType {
+  LOG,
+  WS_STATUS,
+  WS_ERROR
 }
 
 /**
@@ -43,25 +17,21 @@ export class WSConRemoteConsole {
   debug = Debug('ocpp-chargepoint-simulator:simulator:WSConRemoteConsole');
 
   constructor(private readonly ws: WebSocket, private readonly cpName: string) {
-    ws.on('message', (message) => {
-      this.onMessage(message);
-    });
-    ws.on('close', (message) => {
-      this.onClose(message);
-    });
+    ws.on('message', this.onMessage);
+    ws.on('close', this.onClose);
     this.debug(`Registered ${cpName}`);
   }
 
-  onMessage(message) {
+  onMessage(message): void {
     this.debug('received: %s', message);
   };
 
-  onClose(message) {
+  onClose(): void {
     this.debug('close: %s', this.cpName);
     wsConRemoteConsoleRepository.remove(this.cpName, this);
   };
 
-  add(type: RemoteConsoleTransmissionType, payload: any) {
+  add(type: RemoteConsoleTransmissionType, payload: string | object): void {
     const connectedClients = wsConRemoteConsoleRepository.get(this.cpName);
     if (!connectedClients) {
       this.debug(`Trying to send msg to ${this.cpName} but no connected client.`);
@@ -75,14 +45,48 @@ export class WSConRemoteConsole {
     });
   }
 
+  updateCentralSystemConnectionStatus(): void {
+    const wsConCentralSystem = wsConCentralSystemRepository.get(this.cpName);
+    const wsStatus = wsConCentralSystem && wsConCentralSystem.ws.readyState == WebSocket.OPEN ? `open (${wsConCentralSystem.url})` : 'closed.';
+    const wsStatusId = wsConCentralSystem ? wsConCentralSystem.api.id : -1;
+    this.ws.send(JSON.stringify({
+      type: RemoteConsoleTransmissionType.WS_STATUS, payload: {
+        id: wsStatusId,
+        description: wsStatus
+      }
+    }));
+  }
 }
 
-export enum RemoteConsoleTransmissionType {
-  LOG,
-  WS_STATUS,
-  WS_ERROR
+/**
+ * WebSocket Server for server to client communication with Remote-Console
+ */
+class WSServerRemoteConsole {
+
+  private readonly wss: WebSocket.Server;
+
+  debug = Debug('ocpp-chargepoint-simulator:simulator:WSServerRemoteConsole');
+
+  constructor(host: string, port: number) {
+    port++;
+    this.wss = new WebSocket.Server({port, host});
+    this.wss.on('connection', this.onNewConnection);
+    this.debug(`WSServerRemoteConsole listening on ${host}:${port}`);
+  };
+
+  onNewConnection(ws: WebSocket, req: http.IncomingMessage): void {
+    const cpName = req.url.substr(1); // removing leading /
+    this.createWSConRemoteConsole(ws, cpName);
+  }
+
+  private createWSConRemoteConsole(ws: WebSocket, cpName: string): void {
+    const wsConRemoteConsole = new WSConRemoteConsole(ws, cpName);
+    wsConRemoteConsoleRepository.add(cpName, wsConRemoteConsole);
+    wsConRemoteConsole.updateCentralSystemConnectionStatus();
+  }
+
 }
 
-export default function createWSServerRemoteConsole() {
-  new WSServerRemoteConsole();
+export default function createWSServerRemoteConsole(host: string, port: number): void {
+  new WSServerRemoteConsole(host, port);
 }

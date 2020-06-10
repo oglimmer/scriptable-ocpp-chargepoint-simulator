@@ -62,7 +62,7 @@ export class WSConCentralSystem{
     this.ws.send(data);
   }
 
-  close() {
+  close(): void {
     this.ws.close();
   }
 
