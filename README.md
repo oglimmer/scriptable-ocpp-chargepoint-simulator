@@ -181,3 +181,7 @@ cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
 * Send Local List
 * Set Charging Profile
 * Unlock Connector
+
+### Architecture
+
+![alt text](architecture.png "Architectural overview")
