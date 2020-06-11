@@ -165,12 +165,11 @@ cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
 * Reset
 * Get Configuration
 * Change Configuration
+* Change Availability
 
 ### Not supported (yet)
 
-* Data Transfer
 * Cancel Reservation
-* Change Availability
 * Clear Cache
 * Clear Charging Profile
 * Data Transfer

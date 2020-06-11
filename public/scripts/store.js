@@ -75,6 +75,9 @@ define(function (require) {
           '            cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
           '        }\n' +
           '    }\n' +
+          '});\n' +
+          'cp.answerChangeAvailability( async (request) => {\n' +
+          '    cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
           '});\n';
         state.inputText = text;
       },

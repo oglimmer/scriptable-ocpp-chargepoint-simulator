@@ -9,6 +9,7 @@ import {
   AuthorizeResponse,
   BootNotificationPayload,
   BootNotificationResponse,
+  ChangeAvailabilityPayload,
   ChangeConfigurationPayload,
   DiagnosticsStatusNotificationPayload,
   FirmwareStatusNotificationPayload,
@@ -180,6 +181,11 @@ export class ChargepointOcpp16Json {
   answerChangeConfiguration<T>(cb: (request: OcppRequest<ChangeConfigurationPayload>) => void): void {
     debug('answerChangeConfiguration');
     this.registeredCallbacks.set("ChangeConfiguration", cb);
+  }
+
+  answerChangeAvailability<T>(cb: (request: OcppRequest<ChangeAvailabilityPayload>) => void): void {
+    debug('answerChangeAvailability');
+    this.registeredCallbacks.set("ChangeAvailability", cb);
   }
 
   answerTriggerMessage<T>(requestedMessage: string, cb: (request: OcppRequest<TriggerMessagePayload>) => void): void {

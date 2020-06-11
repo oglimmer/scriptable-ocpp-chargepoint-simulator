@@ -120,11 +120,9 @@ export interface GetDiagnosticsPayload extends Payload {
   stopTime?: string
 }
 
-/*
-interface GetDiagnosticsResponse {
+export interface GetDiagnosticsResponse {
   fileName?: string
 }
-*/
 
 export interface DiagnosticsStatusNotificationPayload {
   status: string
@@ -150,11 +148,9 @@ export interface ResetPayload extends Payload {
   type: string
 }
 
-/*
-interface ResetResponse {
+export interface ResetResponse {
   status: string
 }
-*/
 
 export interface GetConfigurationPayload extends Payload {
   key: Array<string>
@@ -178,4 +174,13 @@ export interface ChangeConfigurationPayload extends Payload {
 
 export interface ChangeConfigurationResponse {
   status: string // "Accepted","Rejected","RebootRequired","NotSupported"
+}
+
+export interface ChangeAvailabilityPayload extends Payload {
+  connectorId: number,
+  type: string // "Inoperative", "Operative"
+}
+
+export interface ChangeAvailabilityResponse {
+  status: string // "Accepted","Rejected","Scheduled"
 }
