@@ -53,6 +53,28 @@ define(function (require) {
           '    cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
           '    cp.log("RESET ***boing-boing-boing*** " + request.payload.type);\n' +
           '    await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
+          '});\n' +
+          'const configurationStore = [];\n' +
+          'configurationStore.push({key: "foobar.1", readonly: false, value: "test"});\n' +
+          'configurationStore.push({key: "foobar.2", readonly: true, value: "just a word"});\n' +
+          'configurationStore.push({key: "barfoo.1", readonly: false, value: "100"});\n' +
+          'cp.answerGetConfiguration( async (request) => {\n' +
+          '    cp.sendResponse(request.uniqueId, {configurationKey: configurationStore});\n' +
+          '});\n' +
+          'cp.answerChangeConfiguration( async (request) => {\n' +
+          '    const element = configurationStore.find(e => e.key == request.payload.key);\n' +
+          '    if(!element) {\n' +
+          '        cp.sendResponse(request.uniqueId, {status: "NotSupported"});\n' +
+          '    } else if (element.readonly) {\n' +
+          '        cp.sendResponse(request.uniqueId, {status: "Rejected"});\n' +
+          '    } else {\n' +
+          '        element.value = request.payload.value;\n' +
+          '        if(element.key == \'barfoo.1\') {\n' +
+          '            cp.sendResponse(request.uniqueId, {status: "RebootRequired"});\n' +
+          '        } else {\n' +
+          '            cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
+          '        }\n' +
+          '    }\n' +
           '});\n';
         state.inputText = text;
       },

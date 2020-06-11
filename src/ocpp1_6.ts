@@ -155,3 +155,27 @@ interface ResetResponse {
   status: string
 }
 */
+
+export interface GetConfigurationPayload extends Payload {
+  key: Array<string>
+}
+
+export interface ConfigurationKey {
+  key: string,
+  readonly: boolean,
+  value?: string
+}
+
+export interface GetConfigurationResponse {
+  configurationKey: Array<ConfigurationKey>,
+  unknownKey: Array<string>
+}
+
+export interface ChangeConfigurationPayload extends Payload {
+  key: string,
+  value: string
+}
+
+export interface ChangeConfigurationResponse {
+  status: string // "Accepted","Rejected","RebootRequired","NotSupported"
+}

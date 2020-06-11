@@ -162,24 +162,23 @@ cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
 * Update Firmware
 * Firmware Status Notification
 * Trigger Message
+* Reset
+* Get Configuration
+* Change Configuration
 
 ### Not supported (yet)
 
 * Data Transfer
 * Cancel Reservation
 * Change Availability
-* Change Configuration
 * Clear Cache
 * Clear Charging Profile
 * Data Transfer
 * Get Composite Schedule
-* Get Configuration
 * Get Local List Version
 * Remote Start Transaction
 * Remote Stop Transaction
 * Reserve Now
-* Reset
 * Send Local List
 * Set Charging Profile
 * Unlock Connector
-

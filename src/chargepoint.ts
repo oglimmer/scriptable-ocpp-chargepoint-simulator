@@ -9,8 +9,10 @@ import {
   AuthorizeResponse,
   BootNotificationPayload,
   BootNotificationResponse,
+  ChangeConfigurationPayload,
   DiagnosticsStatusNotificationPayload,
   FirmwareStatusNotificationPayload,
+  GetConfigurationPayload,
   GetDiagnosticsPayload,
   MessageType,
   MeterValuesPayload,
@@ -168,6 +170,16 @@ export class ChargepointOcpp16Json {
   answerReset<T>(cb: (request: OcppRequest<ResetPayload>) => void): void {
     debug('answerReset');
     this.registeredCallbacks.set("Reset", cb);
+  }
+
+  answerGetConfiguration<T>(cb: (request: OcppRequest<GetConfigurationPayload>) => void): void {
+    debug('answerGetConfiguration');
+    this.registeredCallbacks.set("GetConfiguration", cb);
+  }
+
+  answerChangeConfiguration<T>(cb: (request: OcppRequest<ChangeConfigurationPayload>) => void): void {
+    debug('answerChangeConfiguration');
+    this.registeredCallbacks.set("ChangeConfiguration", cb);
   }
 
   answerTriggerMessage<T>(requestedMessage: string, cb: (request: OcppRequest<TriggerMessagePayload>) => void): void {
