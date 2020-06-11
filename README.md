@@ -10,6 +10,7 @@ This simulator supports:
 * REST API with HTML Frontend
 * File based batch mode
 * Fully scriptable in JavaScript
+* ftp operations
 
 Key development considerations:
 
@@ -45,18 +46,32 @@ Example:
 module.exports = async (connect) => {
   let cp;
   try {
+    // WebSocket Connect (no OCPP)
     cp = await connect('ws://localhost:8100/xyz');
+    // typical startup OCPP
     await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
     await cp.sendHeartbeat();
     await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});
     await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
+    // register code for GetDiagnostics, UpdateFirmware, Reset, ...
     cp.answerGetDiagnostics( async (request) => {
-        cp.sendResponse(request.uniqueId, {fileName: "foo.tar.gz"});
-        await cp.sleep(1000);
-        await cp.sendDiagnosticsStatusNotification({status: "Uploading"});
-        await cp.sleep(1000);
-        await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});
+      const fileName = "foo." + new Date().toISOString() + ".txt";
+      cp.sendResponse(request.uniqueId, {fileName});
+      await cp.sendDiagnosticsStatusNotification({status: "Idle"});
+      await cp.sleep(5000);
+      await cp.sendDiagnosticsStatusNotification({status: "Uploading"});
+      await cp.ftpUploadDummyFile(request.payload.location, fileName);
+      await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});
     });
+    // Typical charging session
+    await cp.sendAuthorize({idTag: "ccc"});
+    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Preparing"});
+    cp.transaction = await cp.startTransaction({connectorId: 1, idTag: "ccc", meterStart: 1377, timestamp: "2020-06-11T10:50:58.333Z"});
+    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Charging"});
+    await cp.meterValues({connectorId: 1, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: "2020-06-11T10:50:58.765Z", sampledValue: [{value: 1387}] }]});
+    await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "2020-06-11T10:50:59.148Z"});
+    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});
+    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
   } catch (err) {
     console.log(err);
   } finally {
