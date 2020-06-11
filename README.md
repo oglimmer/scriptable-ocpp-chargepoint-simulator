@@ -1,5 +1,9 @@
 # Scriptable OCPP Chargepoint Simulator
 
+![Node.js CI](https://github.com/oglimmer/scriptable-ocpp-chargepoint-simulator/workflows/Node.js%20CI/badge.svg)
+
+# Intro
+
 This simulator supports:
 
 * OCPP 1.6 with JSON
