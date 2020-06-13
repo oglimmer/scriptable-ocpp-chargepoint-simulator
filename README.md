@@ -99,6 +99,22 @@ DEBUG='ocpp-chargepoint-simulator:*' node build/src/main.js
 
 Open http://localhost:3000/?cp=$chargePointName where chargePointName defines the ID of your chargepoint.
 
+## TLS options
+
+Start the server with a root CA file, a client cert and a client key:
+
+* SSL_CLIENT_KEY_FILE = client certificate key file
+* SSL_CLIENT_CERT_FILE = client certificate cert file
+* SSL_CERT_FILE = server certificate root CA file
+
+```
+SSL_CLIENT_KEY_FILE=path/to/key.pem \
+SSL_CLIENT_CERT_FILE=path/to/cert.pem \
+SSL_CERT_FILE=path/to/ca_root.pem \
+DEBUG='ocpp-chargepoint-simulator:simulator:*' \
+nodemon --use-openssl-ca build/src/main.js
+```
+
 ## server operation - DEV mode
 
 Run those 2 in parallel:

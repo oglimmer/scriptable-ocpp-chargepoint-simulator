@@ -1,4 +1,5 @@
 import * as WebSocket from 'ws';
+import * as fs from 'fs';
 import Debug from 'debug';
 import {wsConRemoteConsoleRepository} from "./state-service";
 import {RemoteConsoleTransmissionType} from "./remote-console-connection";
@@ -20,7 +21,16 @@ export class WSConCentralSystem{
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.url);
+      const options = {} as WebSocket.ClientOptions;
+      if (this.url.startsWith('wss://')) {
+        if (process.env.SSL_CLIENT_KEY_FILE) {
+          options.key = fs.readFileSync(process.env.SSL_CLIENT_KEY_FILE);
+        }
+        if (process.env.SSL_CLIENT_CERT_FILE) {
+          options.cert = fs.readFileSync(process.env.SSL_CLIENT_CERT_FILE);
+        }
+      }
+      this.ws = new WebSocket(this.url, "ocpp1.6", options);
       let promiseResolved = false;
       const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.cpName);
       this.ws.on('open', () => {
