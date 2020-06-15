@@ -1,6 +1,8 @@
 import Debug from 'debug';
 import * as path from 'path';
-import {chargepointFactory, ChargepointFactoryType} from './chargepoint';
+import * as fs from 'fs';
+import * as _eval from 'eval';
+import {chargepointFactory} from './chargepoint';
 import http from './http/http';
 
 const debug = Debug('ocpp-chargepoint-simulator:main');
@@ -23,17 +25,25 @@ function normalizePort(val = '3000'): number | string {
 if (process.argv[2]) {
   debug('Batch mode.');
 
-  interface EntryPoint {
-    (chargepointFactory: ChargepointFactoryType): void;
+  let javaScript : string;
+  if (process.argv[2] == '--stdin') {
+    javaScript = fs.readFileSync(0, 'utf-8');
+  } else {
+    const filename = process.argv[2];
+    javaScript = fs.readFileSync(path.join(process.cwd(), filename), 'utf-8');
   }
+  if (javaScript.indexOf('module.exports') == -1) {
+    javaScript = "module.exports = async function(connect) {\n" +
+    javaScript + "\n" +
+    "};"
+  }
+  debug(javaScript);
 
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   (async () => {
-    try {
-      const filename = process.argv[2];
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const entryPoint: EntryPoint = require(path.join(process.cwd(), filename));
-      await entryPoint(chargepointFactory);
+    try {      
+      const evalResp = _eval(javaScript, 'execute', {}, true);
+      await evalResp(chargepointFactory);
     } catch (e) {
       debug(e);
     }
