@@ -314,6 +314,10 @@ export class ChargepointOcpp16Json {
     return ftpSupport.ftpDownload(fileLocation);
   }
 
+  onClose(cb: () => void): void {
+    this.wsConCentralSystem.onClose(cb);
+  }
+
 }
 
 // counter to give each instance of ChargepointOcpp16Json a unique ID

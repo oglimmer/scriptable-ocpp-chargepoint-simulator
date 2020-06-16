@@ -14,6 +14,7 @@ export class WSConCentralSystem{
 
   ws: WebSocket;
   readonly cpName: string;
+  onCloseCb: () => void;
 
   constructor(readonly url: string, readonly api: ChargepointOcpp16Json) {
     this.cpName = url.substr(url.lastIndexOf('/') + 1);
@@ -47,6 +48,9 @@ export class WSConCentralSystem{
       this.ws.on('message', (data: string) => this.api.onMessage(data));
       this.ws.on('close', () => {
         debug(`Backend WS closed. ${this.url}`);
+        if (this.onCloseCb) {
+          this.onCloseCb();
+        }
         wsConRemoteConsoleArr.forEach(wsConRemoteConsole => {
           wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_STATUS, {
             id: this.api.id,
@@ -74,6 +78,10 @@ export class WSConCentralSystem{
 
   close(): void {
     this.ws.close();
+  }
+
+  onClose(cb: () => void): void {
+    this.onCloseCb = cb;
   }
 
 }

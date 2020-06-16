@@ -24,7 +24,8 @@ define(function (require) {
           text += `cp = await connect(\'ws://localhost:8100/cpoc/PAG/${state.cpName}\');\n`;
         }
         text += 'const bootResp = await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
-          'await cp.sendHeartbeat(); setInterval(() => cp.sendHeartbeat(), bootResp.interval * 1000);\n' +
+          'await cp.sendHeartbeat();\n' +
+          'const heartbeatInterval = setInterval(() => cp.sendHeartbeat(), bootResp.interval * 1000); cp.onClose(() => clearInterval(heartbeatInterval));\n' +
           'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
           'cp.answerGetDiagnostics( async (request) => {\n' +
@@ -85,7 +86,7 @@ define(function (require) {
         state.inputText += 'await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n';
       },
       heartbeat(state) {
-        state.inputText += 'await cp.sendHeartbeat(); setInterval(() => cp.sendHeartbeat(), 60000);\n';
+        state.inputText += 'await cp.sendHeartbeat(); const heartbeatInterval = setInterval(() => cp.sendHeartbeat(), 60000); cp.onClose(() => clearInterval(heartbeatInterval));\n';
       },
       statusNotification(state) {
         state.inputText += 'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
