@@ -4,10 +4,12 @@ define(function (require) {
   let template = `
     <nav class="panel">
       <p class="panel-heading">
-        JavaScript scripting
+        JavaScript scripting        
+        <progress v-if="commandInProgress" class="progress is-small is-primary" max="100">65%</progress>
       </p>
-      <a class="panel-block is-active">
+      <a class="panel-block is-active">        
         <textarea class="textarea" rows="15" withspellcheck="false" v-model="inputText"></textarea>
+      <div class="panel-block">
       </a>
       <div class="panel-block">
         <button class="button is-fullwidth is-primary" v-on:click="sendToServer" >
@@ -27,6 +29,9 @@ define(function (require) {
         set(value) {
           this.$store.commit('updateInputText', value)
         }
+      },
+      commandInProgress() {
+        return this.$store.state.commandInProgress;
       }
     },
     methods: {

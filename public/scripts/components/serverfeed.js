@@ -4,7 +4,13 @@ define(function (require) {
   let template = `
     <nav class="panel">
       <p class="panel-heading">
-        OCPP communication log
+        OCPP communication log (
+          <button v-on:click="clear" class="button is-small is-rounded">Clear</button> 
+          <label class="checkbox">
+            <input type="checkbox" id="checkbox" v-model="hideHeartbeats">
+            Hide Heartbeats
+          </label>
+          )
       </p>
       <div class="panel-block" v-for="msg in ocppMessages">
             <span class="tag is-danger">{{ msg.action }}</span> &nbsp;
@@ -23,7 +29,15 @@ define(function (require) {
     },
     computed: {
       ocppMessages() {
-        return this.$store.state.ocppMessages;
+        return this.$store.state.ocppMessages.filter(e => !this.$store.state.hideHeartbeats ? true : e.action != 'Heartbeat');
+      },
+      hideHeartbeats: {
+        get() {
+          return this.$store.state.hideHeartbeats;
+        },
+        set(value) {
+          this.$store.commit('hideHeartbeats', value);
+        }
       }
     },
     created() {
@@ -42,6 +56,9 @@ define(function (require) {
         } else if(data.type == 2) {
           this.$store.commit('updateWsError', data.payload);
         }
+      },
+      clear: function() {
+        this.$store.commit('clearOcppMessages');
       }
     }
   });

@@ -5,6 +5,8 @@ define(function (require) {
 
   Vue.use(Vuex);
 
+  const baseUrl = 'ws://localhost:8100/cpoc/PAG';
+  
   return new Vuex.Store({
     state: {
       inputText: '',
@@ -12,7 +14,9 @@ define(function (require) {
       wsStatusLastId: -1,
       wsError: [],
       cpName: '',
-      ocppMessages: []
+      ocppMessages: [],
+      hideHeartbeats: false,
+      commandInProgress: false
     },
     mutations: {
       updateInputText(state, value) {
@@ -21,7 +25,7 @@ define(function (require) {
       startup(state) {
         let text = '';
         if(state.wsStatus.startsWith('closed')) {
-          text += `cp = await connect(\'ws://localhost:8100/cpoc/PAG/${state.cpName}\');\n`;
+          text += `cp = await connect('${baseUrl}/${state.cpName}');\n`;
         }
         text += 'const bootResp = await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
           'await cp.sendHeartbeat();\n' +
@@ -111,7 +115,7 @@ define(function (require) {
       updateWsStatus(state, value) {
         if (state.wsStatusLastId <= value.id) {
           if(state.wsStatus === '' && value.description.startsWith('closed')) {
-            state.inputText = `cp = await connect(\'ws://localhost:8100/cpoc/PAG/${state.cpName}\');\n`;
+            state.inputText = `cp = await connect('${baseUrl}/${state.cpName}');\n`;
           }
           state.wsStatus = value.description;
           state.wsStatusLastId = value.id;
@@ -148,16 +152,28 @@ define(function (require) {
         if (messageTypeId == 3) {
           element.answer = value;
         }
+      },
+      hideHeartbeats(state, value) {
+        state.hideHeartbeats = value;
+      },
+      clearOcppMessages(state, value) {
+        state.ocppMessages = [];
+      },
+      commandInProgress(state, value) {
+        state.commandInProgress = value;
       }
     },
     actions: {
       async sendToServer(context) {
         try {
+          context.commit('commandInProgress', true);
           await axios.post(`/cp/${context.state.cpName}`, context.state.inputText, {headers: {'content-type': 'application/javascript'}});
           context.commit('updateInputText', '');
+          context.commit('commandInProgress', false);
         } catch (err) {
           context.commit('updateInputText', '');
           context.commit('updateWsError', err);
+          context.commit('commandInProgress', false);
         }
       }
     }
