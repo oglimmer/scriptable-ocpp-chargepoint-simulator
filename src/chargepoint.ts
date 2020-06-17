@@ -30,8 +30,15 @@ import {
   UpdateFirmwarePayload
 } from "./ocpp1_6";
 
+/**
+ * Logger defintion
+ */
 const debug = Debug('ocpp-chargepoint-simulator:simulator:ChargepointOcpp16Json');
 
+/**
+ * Generates a UUID v4 - e.g. 550e8400-e29b-11d4-a716-446655440000
+ * Needed for the unique-id of a OCPP request
+ */
 function uuidv4(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c: string) {
     const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -39,14 +46,30 @@ function uuidv4(): string {
   });
 }
 
+/**
+ * Converts an object of type OcppRequest (TypeScript) into an OCPP request (protocol) array.
+ * 
+ * @param req an Array representing an OCPP Request as [message-type-id, unique-id, action, payload]
+ */
 function ocppReqToArray<T>(req: OcppRequest<T>): Array<string | number | Payload> {
   return [req.messageTypeId, req.uniqueId, req.action, req.payload];
 }
 
+/**
+ * Converts an object of type OcppResponse (TypeScript) into an OCPP response (protocol) array.
+ * 
+ * @param resp an Array representing an OCPP Response as [message-type-id, unique-id, payload]
+ */
 function ocppResToArray<T>(resp: OcppResponse<T>): Array<string | number | Payload> {
   return [resp.messageTypeId, resp.uniqueId, resp.payload];
 }
 
+/**
+ * Stores an origin request of type OcppRequest and a callback function of type Payload.
+ * To sychronize the OCPP response with it's original request, we store object of this type when
+ * a request is done. When the response comes eventually we use the callback to pass it back to the
+ * caller of the request.
+ */
 interface MessageListenerElement<T> {
   request: OcppRequest<T>;
 
@@ -54,40 +77,72 @@ interface MessageListenerElement<T> {
 }
 
 /**
- * Implements an OCPP 1.6 JSON speaking Chargepoint. Provides API for a Chargepoint.
- * Should not access WebSocket-API directly.
+ * Implements an OCPP 1.6 JSON speaking Chargepoint. This is the main API for a Chargepoint.
  */
 export class ChargepointOcpp16Json {
 
+  /**
+   * Defines the time in milli seconds for the request-response timeout of OCPP messages.
+   */
   private readonly RESPONSE_TIMEOUT = 15000;
 
+  /** Holds all requests currently not answered with a response  */
   private openRequests: Array<MessageListenerElement<Payload>> = [];
+  /** Reference to the class handling the WebSocket connection to the central system  */
   private wsConCentralSystem: WSConCentralSystem;
 
+  /** 
+   * OCPP requests started from the central system need to be answered by code from this call.
+   * This map stores all ocpp message names (action) to the callback function implementing this OCPP message.
+   * */
   private registeredCallbacks: Map<string, (OcppRequest) => void> = new Map();
+  /**
+   * Special case: "TriggerMessage", to make the implementation easier, a user can register just the code for a type of
+   * trigger-message and not the whole trigger message logic
+   */
   private registeredCallbacksTriggerMessage: Map<string, (OcppRequest) => void> = new Map();
 
   constructor(readonly id: number) {
     this.buildTriggerMessage();
   }
 
+  /**
+   * Outputs a string or object to the log console.
+   * 
+   * @param output string or object send to the log output console
+   */
   log(output: (string | object)): void {
     const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
     wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_ERROR, output));
   }
 
+  /**
+   * Waits the time "millies" until the Promise resolves. Will never reject.
+   * 
+   * @param millis time to sleep in milli seconds
+   */
   sleep(millis: number): Promise<void> {
     return new Promise<void>((resolve) => {
       setTimeout(resolve, millis);
     })
   }
 
-  connect(url: string): Promise<ChargepointOcpp16Json> {
+  /**
+   * Connects the WebSocket to the central system. No OCPP happening. DO NOT CALL THIS METHOD DIRECTLY.
+   * 
+   * @param url to connect to. Must start with ws:// or ws://
+   * @returns a Promise which resolves when the connection is established and rejects when the connection cannot be established.
+   */
+  connect(url: string): Promise<void> {
     debug('connect');
     this.wsConCentralSystem = new WSConCentralSystem(url, this);
-    return this.wsConCentralSystem.connect().then(() => this);
+    return this.wsConCentralSystem.connect();
   }
 
+  /**
+   * Sends a OCPP heartbeat message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * received within the timeout period.
+   */
   sendHeartbeat(): Promise<void> {
     debug('sendHeartbeat');
     return this.sendOcpp({
@@ -98,6 +153,12 @@ export class ChargepointOcpp16Json {
     });
   }
 
+  /**
+   * Sends a OCPP boot notification message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * received within the timeout period.
+   * 
+   * @param payload boot notification payload object
+   */
   sendBootnotification(payload: BootNotificationPayload): Promise<BootNotificationResponse> {
     debug('sendBootnotification');
     return this.sendOcpp({
@@ -314,17 +375,27 @@ export class ChargepointOcpp16Json {
     return ftpSupport.ftpDownload(fileLocation);
   }
 
+  /**
+   * Registers a callback function when the WebSocket to the central system is closed
+   * 
+   * @param cb a callback function
+   */
   onClose(cb: () => void): void {
     this.wsConCentralSystem.onClose(cb);
   }
 
 }
 
-// counter to give each instance of ChargepointOcpp16Json a unique ID
+/** Counter to give each instance of ChargepointOcpp16Json a unique ID */
 // this is needed as the front-end knows only one (and only exactly one) instance, so the FE need to find the
 // latest instance (using the highest ID)
 let connectCounter = 0;
 
+/**
+ * Returns a Promise which resolves into a new instance of ChargepointOcpp16Json. Rejects if the connection attempt fails.
+ * 
+ * @param url WebSocket Url to connect to
+ */
 export function chargepointFactory(url: string): Promise<ChargepointOcpp16Json> {
   const wsConCentralSystemFromRepository = wsConCentralSystemRepository.get(url.substr(url.lastIndexOf('/') + 1));
   if (wsConCentralSystemFromRepository && wsConCentralSystemFromRepository.ws.readyState === WebSocket.OPEN) {
@@ -332,9 +403,5 @@ export function chargepointFactory(url: string): Promise<ChargepointOcpp16Json> 
   }
   connectCounter++;
   const cp = new ChargepointOcpp16Json(connectCounter);
-  return cp.connect(url);
-}
-
-export interface ChargepointFactoryType {
-  (url: string): Promise<ChargepointOcpp16Json>;
+  return cp.connect(url).then(() => cp);
 }

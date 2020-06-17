@@ -13,7 +13,8 @@ const cpRouter = express.Router();
 /**
  * use JavaScript coming from req.body and execute it.
  *
- * @param body: string - JavaScript using connect: ChargepointFactoryType or cp: ChargepointOcpp16Json as pre-defined variables.
+ * @param body: string - JavaScript using a variable connect with the signature (url: string): Promise<ChargepointOcpp16Json> or 
+ *                       a variable cp: ChargepointOcpp16Json
  * @param route.cpName: string - chargepoint name
  * @return exception or "ok" for success
  */
