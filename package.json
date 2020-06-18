@@ -31,7 +31,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
-    "docs": "npx typedoc --inputFiles src/ --exclude 'src/main.ts' --exclude 'src/websocket-connection-centralsystem.ts' --exclude 'src/ftp.ts' --exclude 'src/http/*' --exclude 'src/remote-console-connection.ts' --exclude 'src/state-service.ts'"
+    "docs": "npx typedoc --out public/docs --inputFiles src/ --exclude 'src/main.ts' --exclude 'src/websocket-connection-centralsystem.ts' --exclude 'src/ftp.ts' --exclude 'src/http/*' --exclude 'src/remote-console-connection.ts' --exclude 'src/state-service.ts'"
   },
   "author": "Oli Zimpasser <oglimmer@gmail.com>",
   "license": "Apache-2.0",

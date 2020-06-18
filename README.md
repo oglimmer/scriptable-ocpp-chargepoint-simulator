@@ -43,61 +43,67 @@ parameter. This parameter will pass the `connect(url: string): Chargepoint` func
 Example:
 
 ```
-module.exports = async (connect) => {
-  let cp;
-  try {
-    // WebSocket Connect (no OCPP)
-    cp = await connect('ws://localhost:8100/xyz');
-    // typical startup OCPP
-    await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
-    await cp.sendHeartbeat();
-    await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
-    // register code for GetDiagnostics, UpdateFirmware, Reset, ...
-    cp.answerGetDiagnostics( async (request) => {
-      const fileName = "foo." + new Date().toISOString() + ".txt";
-      cp.sendResponse(request.uniqueId, {fileName});
-      await cp.sendDiagnosticsStatusNotification({status: "Idle"});
-      await cp.sleep(5000);
-      await cp.sendDiagnosticsStatusNotification({status: "Uploading"});
-      await cp.ftpUploadDummyFile(request.payload.location, fileName);
-      await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});
-    });
-    // Typical charging session
-    await cp.sendAuthorize({idTag: "ccc"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Preparing"});
-    cp.transaction = await cp.startTransaction({connectorId: 1, idTag: "ccc", meterStart: 1377, timestamp: "2020-06-11T10:50:58.333Z"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Charging"});
-    await cp.meterValues({connectorId: 1, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: "2020-06-11T10:50:58.765Z", sampledValue: [{value: 1387}] }]});
-    await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "2020-06-11T10:50:59.148Z"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
-  } catch (err) {
-    console.log(err);
-  } finally {
-    cp.close();
-  }
+let cp;
+try {
+  // WebSocket Connect (no OCPP)
+  cp = await connect('ws://localhost:8100/xyz');
+  // typical startup OCPP
+  await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
+  await cp.sendHeartbeat();
+  await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
+  // register code for GetDiagnostics, UpdateFirmware, Reset, ...
+  cp.answerGetDiagnostics( async (request) => {
+    const fileName = "foo." + new Date().toISOString() + ".txt";
+    cp.sendResponse(request.uniqueId, {fileName});
+    await cp.sendDiagnosticsStatusNotification({status: "Idle"});
+    await cp.sleep(5000);
+    await cp.sendDiagnosticsStatusNotification({status: "Uploading"});
+    await cp.ftpUploadDummyFile(request.payload.location, fileName);
+    await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});
+  });
+  // Typical charging session
+  await cp.sendAuthorize({idTag: "ccc"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Preparing"});
+  cp.transaction = await cp.startTransaction({connectorId: 1, idTag: "ccc", meterStart: 1377, timestamp: "2020-06-11T10:50:58.333Z"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Charging"});
+  await cp.meterValues({connectorId: 1, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: "2020-06-11T10:50:58.765Z", sampledValue: [{value: 1387}] }]});
+  await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "2020-06-11T10:50:59.148Z"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
+} catch (err) {
+  console.log(err);
+} finally {
+  cp.close();
 }
 ```
 
 Start it:
 
 ```
-DEBUG='ocpp-chargepoint-simulator:chargepoint' node build/src/main.js ./custom.js
+./start.sh --v ./custom.js
+# or
+cat custom.js | ./start.sh --v --stdin
 ```
-
-'ocpp-chargepoint-simulator:chargepoint' will just print OCPP messages.
-Use 'ocpp-chargepoint-simulator:*' instead for full debugging. 
 
 ## server operation
 
 Default port for HTML is 3000. Change via env variable `PORT`. The WebSocket based Server to Client communication is using `PORT+1`.
 
 ```
-DEBUG='ocpp-chargepoint-simulator:*' node build/src/main.js
+./start.sh --v
 ```
 
 Open http://localhost:3000/?cp=$chargePointName where chargePointName defines the ID of your chargepoint.
+
+
+## Create API docs
+
+```
+npm build && npm run docs
+```
+
+Open the docs in ./public/docs or access them via `./start.sh` and [http://localhost:3000/docs](http://localhost:3000/docs)
 
 ## TLS options
 
@@ -121,7 +127,7 @@ Run those 2 in parallel:
 
 ```
 npm run build:watch
-DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
+./start.sh --v1 --d
 ```
 
 ## OCPP Operations
