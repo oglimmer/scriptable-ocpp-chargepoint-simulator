@@ -30,10 +30,11 @@ cpRouter.post('/:cpName?', async (req, res) => {
     return;
   }
   try {
+    const enhChargepointFactory = (url: string) => chargepointFactory(url, cpName);
     const evalResp = _eval(javaScript, 'request-body', {}, true);
     const wsConCentralSystem = wsConCentralSystemRepository.get(cpName) as WSConCentralSystem;
     const chargepointOcpp16Json = wsConCentralSystem ? wsConCentralSystem.api : undefined;
-    const returningChargepointOcpp16Json = await evalResp(chargepointFactory, chargepointOcpp16Json);
+    const returningChargepointOcpp16Json = await evalResp(enhChargepointFactory, chargepointOcpp16Json);
     if (returningChargepointOcpp16Json) {
       wsConCentralSystemRepository.set(cpName, returningChargepointOcpp16Json.wsConCentralSystem);
     }

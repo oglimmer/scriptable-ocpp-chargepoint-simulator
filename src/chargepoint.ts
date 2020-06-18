@@ -133,9 +133,9 @@ export class ChargepointOcpp16Json {
    * @param url to connect to. Must start with ws:// or ws://
    * @returns a Promise which resolves when the connection is established and rejects when the connection cannot be established.
    */
-  connect(url: string): Promise<void> {
+  connect(url: string, cpName?: string): Promise<void> {
     debug('connect');
-    this.wsConCentralSystem = new WSConCentralSystem(url, this);
+    this.wsConCentralSystem = new WSConCentralSystem(url, this, cpName);
     return this.wsConCentralSystem.connect();
   }
 
@@ -385,7 +385,7 @@ export class ChargepointOcpp16Json {
    * @param ocppMessage of any messageTypeId. This is an array of either 2, 3 or 4 elements.  
    */
   onMessage(ocppMessage: Array<number|string|object>): void {
-    debug(`received: ${ocppMessage}`);
+    debug(`received: ${JSON.stringify(ocppMessage)}`);
     const messageTypeId = ocppMessage[0] as number;
     const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
     if (messageTypeId === MessageType.CALLRESULT || messageTypeId === MessageType.CALLERROR) {
@@ -524,12 +524,12 @@ let connectCounter = 0;
  * 
  * @param url WebSocket Url to connect to
  */
-export function chargepointFactory(url: string): Promise<ChargepointOcpp16Json> {
-  const wsConCentralSystemFromRepository = wsConCentralSystemRepository.get(url.substr(url.lastIndexOf('/') + 1));
+export function chargepointFactory(url: string, cpName?: string): Promise<ChargepointOcpp16Json> {
+  const wsConCentralSystemFromRepository = wsConCentralSystemRepository.get(cpName);
   if (wsConCentralSystemFromRepository && wsConCentralSystemFromRepository.ws.readyState === WebSocket.OPEN) {
     wsConCentralSystemFromRepository.close();
   }
   connectCounter++;
   const cp = new ChargepointOcpp16Json(connectCounter);
-  return cp.connect(url).then(() => cp);
+  return cp.connect(url, cpName).then(() => cp);
 }

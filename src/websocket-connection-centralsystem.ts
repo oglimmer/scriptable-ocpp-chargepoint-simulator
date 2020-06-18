@@ -13,11 +13,9 @@ const debug = Debug('ocpp-chargepoint-simulator:simulator:WSConCentralSystem');
 export class WSConCentralSystem{
 
   ws: WebSocket;
-  readonly cpName: string;
   onCloseCb: () => void;
 
-  constructor(readonly url: string, readonly api: ChargepointOcpp16Json) {
-    this.cpName = url.substr(url.lastIndexOf('/') + 1);
+  constructor(readonly url: string, readonly api: ChargepointOcpp16Json, readonly cpName?: string) {
   }
 
   connect(): Promise<void> {

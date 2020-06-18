@@ -100,7 +100,7 @@ Open http://localhost:3000/?cp=$chargePointName where chargePointName defines th
 ## Create API docs
 
 ```
-npm build && npm run docs
+npm run build && npm run docs
 ```
 
 Open the docs in ./public/docs or access them via `./start.sh` and [http://localhost:3000/docs](http://localhost:3000/docs)
