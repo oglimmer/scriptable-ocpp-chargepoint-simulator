@@ -22,6 +22,7 @@ define(function (require) {
         return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
       }
     }
+    return '';
   };
 
   new Vue({

@@ -45,7 +45,10 @@ export class WSConCentralSystem{
         resolve();
         promiseResolved = true;
       })
-      this.ws.on('message', (data: string) => this.api.onMessage(data));
+      this.ws.on('message', (data: string) => {
+        const ocppMessage = JSON.parse(data);
+        this.api.onMessage(ocppMessage);
+      });
       this.ws.on('close', () => {
         debug(`Backend WS closed. ${this.url}`);
         if (this.onCloseCb) {
