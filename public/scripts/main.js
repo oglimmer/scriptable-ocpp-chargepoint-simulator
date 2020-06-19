@@ -29,7 +29,10 @@ define(function (require) {
     el: '#main',
     store: store,
     created() {
-      this.$store.commit('setCpName', getUrlParameter('cp'));
+      this.$store.commit('setUrlParams', {
+        cpName: getUrlParameter('cp'),
+        connectTemplate: getUrlParameter('connectTemplate')
+      });
     },
     template: `
       <div>

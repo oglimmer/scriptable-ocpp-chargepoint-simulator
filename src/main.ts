@@ -41,11 +41,14 @@ if (process.argv[2]) {
 
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   (async () => {
-    try {      
+    try {
       const evalResp = _eval(javaScript, 'execute', {}, true);
       await evalResp(chargepointFactory);
     } catch (e) {
       debug(e);
+      if (!debug.enabled) {
+        console.error(e);
+      }
     }
   })();
 

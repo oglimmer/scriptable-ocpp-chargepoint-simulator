@@ -94,8 +94,9 @@ Default port for HTML is 3000. Change via env variable `PORT`. The WebSocket bas
 ./start.sh --v
 ```
 
-Open http://localhost:3000/?cp=$chargePointName where chargePointName defines the ID of your chargepoint.
+Open `http://localhost:3000/?connectTemplate=$connectUrl&cp=$chargePointName` where chargePointName defines the ID of your chargepoint and connectUrl the connect string without the chargepoint-id at the end.
 
+Example: `http://localhost:3000/?connectTemplate=ws://foobar:8088/charging&cp=chargepoint001`.
 
 ## Create API docs
 
