@@ -2,7 +2,7 @@
 
 set -eu
 
-usage() {                                      
+usage() {
   echo "Usage: $0 [ --d ] [ --s ] [ --h ] [ --v[1|2] ] [--stdin] <filename>
     --d - development mode, uses nodemon instead of node
     --s - silent mode, no output at all
@@ -10,10 +10,13 @@ usage() {
     --v1 - enhanced verbosity, shows debug output on application and http-server level
     --v2 - full verbosity, shows all debug output
     --stdin - uses stdin to read JavaScript
+    --key - path to PEM encoded private key file
+    --cert - path to PEM encoded client certificate file
+    --ca - path to PEM encoded CA certificate file
     --h - shows this help
-  " 1>&2 
+  " 1>&2
 }
-exit_abnormal() {                              
+exit_abnormal() {
   usage
   exit 1
 }
@@ -53,6 +56,18 @@ while [[ "${1:-}" =~ ^- ]] ; do
       ;;
     --s)
       export DEBUG=.
+      ;;
+    --key)
+      export SSL_CLIENT_KEY_FILE=$2
+      shift
+      ;;
+    --cert)
+      export SSL_CLIENT_CERT_FILE=$2
+      shift
+      ;;
+    --ca)
+      export SSL_CERT_FILE=$2
+      shift
       ;;
     --stdin)
       STDIN=--stdin
