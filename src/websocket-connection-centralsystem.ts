@@ -4,6 +4,7 @@ import Debug from 'debug';
 import {wsConRemoteConsoleRepository} from "./state-service";
 import {RemoteConsoleTransmissionType} from "./remote-console-connection";
 import {ChargepointOcpp16Json} from "./chargepoint";
+import {keyStore} from "./keystore";
 
 const debug = Debug('ocpp-chargepoint-simulator:simulator:WSConCentralSystem');
 
@@ -13,20 +14,22 @@ const debug = Debug('ocpp-chargepoint-simulator:simulator:WSConCentralSystem');
 export class WSConCentralSystem{
 
   ws: WebSocket;
-  onCloseCb: () => void;
+  onCloseCb: () => void; // TODO: need to move to ChargepointOcpp16Json
 
   constructor(readonly url: string, readonly api: ChargepointOcpp16Json, readonly cpName?: string) {
+    if(!this.cpName) {
+      this.cpName = this.url.substr(this.url.lastIndexOf('/') + 1);
+    }
   }
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const options = {} as WebSocket.ClientOptions;
       if (this.url.startsWith('wss://')) {
-        if (process.env.SSL_CLIENT_KEY_FILE) {
-          options.key = fs.readFileSync(process.env.SSL_CLIENT_KEY_FILE);
-        }
-        if (process.env.SSL_CLIENT_CERT_FILE) {
-          options.cert = fs.readFileSync(process.env.SSL_CLIENT_CERT_FILE);
+        const keyStoreElement = keyStore.get(this.cpName);
+        if (keyStoreElement) {
+          options.key = fs.readFileSync(keyStoreElement.key);
+          options.cert = fs.readFileSync(keyStoreElement.cert);
         }
       }
       this.ws = new WebSocket(this.url, "ocpp1.6", options);

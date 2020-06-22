@@ -9,9 +9,11 @@ import {
   AuthorizeResponse,
   BootNotificationPayload,
   BootNotificationResponse,
+  CertificateSignedPayload,
   ChangeAvailabilityPayload,
   ChangeConfigurationPayload,
   DiagnosticsStatusNotificationPayload,
+  ExtendedTriggerMessagePayload,
   FirmwareStatusNotificationPayload,
   GetConfigurationPayload,
   GetDiagnosticsPayload,
@@ -21,6 +23,7 @@ import {
   OcppResponse,
   Payload,
   ResetPayload,
+  SignCertificatePayload,
   StartTransactionPayload,
   StartTransactionResponse,
   StatusNotificationPayload,
@@ -29,6 +32,8 @@ import {
   TriggerMessagePayload,
   UpdateFirmwarePayload
 } from "./ocpp1_6";
+import {CertManagement, Csr} from "./cert-management";
+import {KeyStore} from "./keystore";
 
 /**
  * Logger defintion
@@ -48,7 +53,7 @@ function uuidv4(): string {
 
 /**
  * Converts an object of type OcppRequest (TypeScript) into an OCPP request (protocol) array.
- * 
+ *
  * @param req an Array representing an OCPP Request as [message-type-id, unique-id, action, payload]
  */
 function ocppReqToArray<T>(req: OcppRequest<T>): Array<string | number | Payload> {
@@ -57,7 +62,7 @@ function ocppReqToArray<T>(req: OcppRequest<T>): Array<string | number | Payload
 
 /**
  * Converts an object of type OcppResponse (TypeScript) into an OCPP response (protocol) array.
- * 
+ *
  * @param resp an Array representing an OCPP Response as [message-type-id, unique-id, payload]
  */
 function ocppResToArray<T>(resp: OcppResponse<T>): Array<string | number | Payload> {
@@ -86,29 +91,36 @@ export class ChargepointOcpp16Json {
    */
   private readonly RESPONSE_TIMEOUT = 15000;
 
+  id : number;
+
+  keyStore: KeyStore;
+
   /** Holds all requests currently not answered with a response  */
   private openRequests: Array<MessageListenerElement<Payload>> = [];
   /** Reference to the class handling the WebSocket connection to the central system  */
   private wsConCentralSystem: WSConCentralSystem;
 
-  /** 
+  /**
    * OCPP requests started from the central system need to be answered by code from this call.
    * This map stores all ocpp message names (action) to the callback function implementing this OCPP message.
    * */
   private registeredCallbacks: Map<string, (OcppRequest) => void> = new Map();
   /**
-   * Special case: "TriggerMessage", to make the implementation easier, a user can register just the code for a type of
+   * Special cases: "TriggerMessage", to make the implementation easier, a user can register just the code for a type of
    * trigger-message and not the whole trigger message logic
    */
   private registeredCallbacksTriggerMessage: Map<string, (OcppRequest) => void> = new Map();
+  private registeredCallbacksExtendedTriggerMessage: Map<string, (OcppRequest) => void> = new Map();
 
-  constructor(readonly id: number) {
+  constructor(id: number) {
+    this.id = id;
     this.buildTriggerMessage();
+    this.buildExtendedTriggerMessage();
   }
 
   /**
    * Outputs a string or object to the log console.
-   * 
+   *
    * @param output string or object send to the log output console
    */
   log(output: (string | object)): void {
@@ -118,7 +130,7 @@ export class ChargepointOcpp16Json {
 
   /**
    * Waits the time "millies" until the Promise resolves. Will never reject.
-   * 
+   *
    * @param millis time to sleep in milli seconds
    */
   sleep(millis: number): Promise<void> {
@@ -129,18 +141,26 @@ export class ChargepointOcpp16Json {
 
   /**
    * Connects the WebSocket to the central system. No OCPP happening. DO NOT CALL THIS METHOD DIRECTLY.
-   * 
+   *
    * @param url to connect to. Must start with ws:// or ws://
    * @returns a Promise which resolves when the connection is established and rejects when the connection cannot be established.
    */
   connect(url: string, cpName?: string): Promise<void> {
     debug('connect');
     this.wsConCentralSystem = new WSConCentralSystem(url, this, cpName);
+    this.keyStore = new KeyStore(this.wsConCentralSystem.cpName);
     return this.wsConCentralSystem.connect();
   }
 
+  reConnect(): Promise<void> {
+    debug('coreConnectnnect');
+    this.wsConCentralSystem.close();
+    this.wsConCentralSystem = new WSConCentralSystem(this.wsConCentralSystem.url, this, this.wsConCentralSystem.cpName);
+    this.id++;
+    return this.wsConCentralSystem.connect();
+  }
   /**
-   * Sends a OCPP heartbeat message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * Sends a OCPP heartbeat message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
    */
   sendHeartbeat(): Promise<void> {
@@ -154,9 +174,9 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Sends a OCPP boot notification message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * Sends a OCPP boot notification message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
-   * 
+   *
    * @param payload boot notification payload object
    */
   sendBootnotification(payload: BootNotificationPayload): Promise<BootNotificationResponse> {
@@ -170,9 +190,9 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Sends a OCPP status notification message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * Sends a OCPP status notification message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
-   * 
+   *
    * @param payload status notification payload object
    */
   sendStatusNotification(payload: StatusNotificationPayload): Promise<void> {
@@ -186,9 +206,9 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Sends a OCPP authorize message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * Sends a OCPP authorize message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
-   * 
+   *
    * @param payload authorize payload object
    */
   sendAuthorize(payload: AuthorizePayload): Promise<AuthorizeResponse> {
@@ -202,9 +222,9 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Sends a OCPP start transaction message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * Sends a OCPP start transaction message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
-   * 
+   *
    * @param payload start transaction payload object
    */
   startTransaction(payload: StartTransactionPayload): Promise<StartTransactionResponse> {
@@ -218,9 +238,9 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Sends a OCPP stop transaction message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * Sends a OCPP stop transaction message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
-   * 
+   *
    * @param payload stop transaction payload object
    */
   stopTransaction(payload: StopTransactionPayload): Promise<StopTransactionResponse> {
@@ -234,9 +254,9 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Sends a OCPP meter values message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * Sends a OCPP meter values message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
-   * 
+   *
    * @param payload meter values payload object
    */
   meterValues(payload: MeterValuesPayload): Promise<void> {
@@ -252,7 +272,7 @@ export class ChargepointOcpp16Json {
   /**
    * Registers a function to implement logic for OCPP's Get Diagnostics message. The function provided must at least call
    * cp.sendResponse(request.uniqueId, {fileName}); to send the a OCPP CALLRESULT message.
-   * 
+   *
    * @param cb callback with signature (request: OcppRequest<GetDiagnosticsPayload>) => void
    */
   answerGetDiagnostics<T>(cb: (request: OcppRequest<GetDiagnosticsPayload>) => void): void {
@@ -263,7 +283,7 @@ export class ChargepointOcpp16Json {
   /**
    * Registers a function to implement logic for OCPP's Update Firmware message. The function provided must at least call
    * cp.sendResponse(request.uniqueId, {}); to send the a OCPP CALLRESULT message.
-   * 
+   *
    * @param cb callback with signature (request: OcppRequest<UpdateFirmwarePayload>) => void
    */
   answerUpdateFirmware<T>(cb: (request: OcppRequest<UpdateFirmwarePayload>) => void): void {
@@ -274,7 +294,7 @@ export class ChargepointOcpp16Json {
   /**
    * Registers a function to implement logic for OCPP's Reset message. The function provided must at least call
    * cp.sendResponse(request.uniqueId, {status}); to send the a OCPP CALLRESULT message.
-   * 
+   *
    * @param cb callback with signature (request: OcppRequest<ResetPayload>) => void
    */
   answerReset<T>(cb: (request: OcppRequest<ResetPayload>) => void): void {
@@ -285,7 +305,7 @@ export class ChargepointOcpp16Json {
   /**
    * Registers a function to implement logic for OCPP's Get Configuration message. The function provided must at least call
    * cp.sendResponse(request.uniqueId, {...}); to send the a OCPP CALLRESULT message.
-   * 
+   *
    * @param cb callback with signature (request: OcppRequest<GetConfigurationPayload>) => void
    */
   answerGetConfiguration<T>(cb: (request: OcppRequest<GetConfigurationPayload>) => void): void {
@@ -296,7 +316,7 @@ export class ChargepointOcpp16Json {
   /**
    * Registers a function to implement logic for OCPP's Change Configuration message. The function provided must at least call
    * cp.sendResponse(request.uniqueId, {...}); to send the a OCPP CALLRESULT message.
-   * 
+   *
    * @param cb callback with signature (request: OcppRequest<ChangeConfigurationPayload>) => void
    */
   answerChangeConfiguration<T>(cb: (request: OcppRequest<ChangeConfigurationPayload>) => void): void {
@@ -307,7 +327,7 @@ export class ChargepointOcpp16Json {
   /**
    * Registers a function to implement logic for OCPP's Change Availability message. The function provided must at least call
    * cp.sendResponse(request.uniqueId, {...}); to send the a OCPP CALLRESULT message.
-   * 
+   *
    * @param cb callback with signature (request: OcppRequest<ChangeAvailabilityPayload>) => void
    */
   answerChangeAvailability<T>(cb: (request: OcppRequest<ChangeAvailabilityPayload>) => void): void {
@@ -316,9 +336,20 @@ export class ChargepointOcpp16Json {
   }
 
   /**
+   * Registers a function to implement logic for OCPP's 1.6 secured Certificate Signed message. The function provided must at least call
+   * cp.sendResponse(request.uniqueId, {...}); to send the a OCPP CALLRESULT message.
+   *
+   * @param cb callback with signature (request: OcppRequest<CertificateSignedPayload>) => void
+   */
+  answerCertificateSigned<T>(cb: (request: OcppRequest<CertificateSignedPayload>) => void): void {
+    debug('answerCertificateSigned');
+    this.registeredCallbacks.set("CertificateSigned", cb);
+  }
+
+  /**
    * Registers a function to implement logic for OCPP's Trigger Message message. The function provided must at least call
    * cp.sendResponse(request.uniqueId, {...}); to send the a OCPP CALLRESULT message.
-   * 
+   *
    * @param requestedMessage name of trigger message
    * @param cb callback with signature (request: OcppRequest<TriggerMessagePayload>) => void
    */
@@ -326,6 +357,19 @@ export class ChargepointOcpp16Json {
     debug('answerTriggerMessage');
     this.registeredCallbacksTriggerMessage.set(requestedMessage, cb);
     this.buildTriggerMessage();
+  }
+
+  /**
+   * Registers a function to implement logic for OCPP's 1.6 secured Extended Trigger Message message. The function provided must at least call
+   * cp.sendResponse(request.uniqueId, {...}); to send the a OCPP CALLRESULT message.
+   *
+   * @param requestedMessage name of trigger message
+   * @param cb callback with signature (request: OcppRequest<TriggerMessagePayload>) => void
+   */
+  answerExtendedTriggerMessage<T>(requestedMessage: string, cb: (request: OcppRequest<ExtendedTriggerMessagePayload>) => void): void {
+    debug('answerExtendedTriggerMessage');
+    this.registeredCallbacksExtendedTriggerMessage.set(requestedMessage, cb);
+    this.buildExtendedTriggerMessage();
   }
 
   /**
@@ -348,9 +392,28 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Sends a OCPP diagnostics status notification message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * Builds the function put into this.registeredCallbacks
+   */
+  private buildExtendedTriggerMessage(): void {
+    const extendedTriggerMessageCallBack = (request: OcppRequest<ExtendedTriggerMessagePayload>): void => {
+      let requestedMethodRegistered = false;
+      this.registeredCallbacksExtendedTriggerMessage.forEach((cb, requestedMessage) => {
+        if (request.payload.requestedMessage === requestedMessage) {
+          requestedMethodRegistered = true;
+          cb(request);
+        }
+      })
+      if (!requestedMethodRegistered) {
+        this.sendResponse(request.uniqueId, {status: "NotImplemented"});
+      }
+    };
+    this.registeredCallbacks.set("ExtendedTriggerMessage", extendedTriggerMessageCallBack);
+  }
+
+  /**
+   * Sends a OCPP diagnostics status notification message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
-   * 
+   *
    * @param payload diagnostics status notification payload object
    */
   sendDiagnosticsStatusNotification(payload: DiagnosticsStatusNotificationPayload): Promise<void> {
@@ -364,9 +427,9 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Sends a OCPP firmware status notification message. The Promise resolves when the related OCPP response is received and rejects when no response is 
+   * Sends a OCPP firmware status notification message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
-   * 
+   *
    * @param payload firmware status notification payload object
    */
   sendFirmwareStatusNotification(payload: FirmwareStatusNotificationPayload): Promise<void> {
@@ -380,9 +443,25 @@ export class ChargepointOcpp16Json {
   }
 
   /**
+   * Sends a OCPP 1.6 secured sign certificate message. The Promise resolves when the related OCPP response is received and rejects when no response is
+   * received within the timeout period.
+   *
+   * @param payload sign certificate payload object
+   */
+  sendSignCertificate(payload: SignCertificatePayload): Promise<void> {
+    debug('sendSignCertificate');
+    return this.sendOcpp({
+      messageTypeId: MessageType.CALL,
+      uniqueId: uuidv4(),
+      action: 'SignCertificate',
+      payload
+    });
+  }
+
+  /**
    * Processes an incoming OCPP message
-   * 
-   * @param ocppMessage of any messageTypeId. This is an array of either 2, 3 or 4 elements.  
+   *
+   * @param ocppMessage of any messageTypeId. This is an array of either 2, 3 or 4 elements.
    */
   onMessage(ocppMessage: Array<number|string|object>): void {
     debug(`received: ${JSON.stringify(ocppMessage)}`);
@@ -414,7 +493,7 @@ export class ChargepointOcpp16Json {
 
   /**
    * Sends an OCPP message to the central system. The promise resolves when the central system sends a CALLRESULT. It rejects when the timeout is due.
-   * 
+   *
    * @param req OCPP request object
    */
   sendOcpp<T, U>(req: OcppRequest<U>): Promise<T> {
@@ -435,7 +514,7 @@ export class ChargepointOcpp16Json {
 
   /**
    * Sends an OCPP response for a previous OCPP request
-   * 
+   *
    * @param uniqueId unique-id of the OCPP message
    * @param payload OCPP payload for this response
    */
@@ -461,7 +540,7 @@ export class ChargepointOcpp16Json {
 
   /**
    * Match an OCPP response with a previously registered OCPP request
-   * 
+   *
    * @param resp OCPP response
    */
   private triggerRequestResult<T>(resp: OcppResponse<T>): void {
@@ -471,7 +550,7 @@ export class ChargepointOcpp16Json {
 
   /**
    * After submitting an OCPP request, register the request so we can match an upcoming response with a previous request.
-   * 
+   *
    * @param req OCPP request
    * @param next callback function to call when the response arrived
    */
@@ -484,7 +563,7 @@ export class ChargepointOcpp16Json {
 
   /**
    * Upload a dummy file to an FTP location. The promsie will resolve when the file is uploaded.
-   * 
+   *
    * @param fileLocation ftp host (and possibly user/password)
    * @param fileName ftp path and filename
    */
@@ -495,7 +574,7 @@ export class ChargepointOcpp16Json {
 
   /**
    * Download a file from a FTP location. The promise will resolve when the file is downloaded.
-   * 
+   *
    * @param fileLocation ftp host (and possibly user/password), path and filename
    */
   ftpDownload(fileLocation: string): Promise<string> {
@@ -503,9 +582,18 @@ export class ChargepointOcpp16Json {
     return ftpSupport.ftpDownload(fileLocation);
   }
 
+  generateCsr(): Promise<Csr> {
+    const certManagement = new CertManagement();
+    return certManagement.generateCsr(this.wsConCentralSystem.cpName);
+  }
+
+  keystore(): KeyStore {
+    return this.keyStore;
+  }
+
   /**
    * Registers a callback function when the WebSocket to the central system is closed
-   * 
+   *
    * @param cb a callback function
    */
   onClose(cb: () => void): void {
@@ -521,7 +609,7 @@ let connectCounter = 0;
 
 /**
  * Returns a Promise which resolves into a new instance of ChargepointOcpp16Json. Rejects if the connection attempt fails.
- * 
+ *
  * @param url WebSocket Url to connect to
  */
 export function chargepointFactory(url: string, cpName?: string): Promise<ChargepointOcpp16Json> {

@@ -151,7 +151,7 @@ Example for BootNotification
 ```
 cp.answerTriggerMessage("BootNotification", async (request) => {
     cp.sendResponse(request.uniqueId, {status: "Accepted"});
-    cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
+    await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
 });
 ```
 
@@ -163,13 +163,36 @@ Another example for DiagnosticsStatusNotification
 cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
     if(currentDiagnosticsStatus) {
         cp.sendResponse(request.uniqueId, {status: "Accepted"});
-        cp.sendDiagnosticsStatusNotification({status: currentDiagnosticsStatus});
+        await cp.sendDiagnosticsStatusNotification({status: currentDiagnosticsStatus});
     } else {
         cp.sendResponse(request.uniqueId, {status: "Rejected"});
     }
 });
 ``` 
  
+### ExtendedTriggerMessage
+
+```
+let tmpKey;
+cp.answerExtendedTriggerMessage("SignChargePointCertificate", async (request) => {
+    cp.sendResponse(request.uniqueId, {status: "Accepted"});
+    const {key, csr} = await cp.generateCsr();
+    tmpKey = key;
+    await cp.sendSignCertificate({csr});
+});
+cp.answerCertificateSigned( async (request) => {
+    if(!tmpKey) {
+        cp.sendResponse(request.uniqueId, {status: "Rejected"});
+        return;
+    }
+    cp.sendResponse(request.uniqueId, {status: "Accepted"});
+    const keystore = cp.keystore();
+    keystore.set(tmpKey, request.cert.join('\n')); // cert is Array<string>
+    keystore.save("-" + new Date().toISOString());
+    await cp.reConnect();
+    await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
+});
+```
 
 ### Supported
 

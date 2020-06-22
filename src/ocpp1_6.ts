@@ -184,3 +184,24 @@ export interface ChangeAvailabilityPayload extends Payload {
 export interface ChangeAvailabilityResponse {
   status: string // "Accepted","Rejected","Scheduled"
 }
+
+export interface ExtendedTriggerMessagePayload {
+  requestedMessage: string, // "BootNotification","LogStatusNotification","FirmwareStatusNotification","Heartbeat","MeterValues","SignChargePointCertificate","StatusNotification"
+  connectorId?: number
+}
+
+export interface SignCertificatePayload {
+  csr: string
+}
+
+export interface SignCertificateResponse {
+  status: string // "Accepted","Rejected"
+}
+
+export interface CertificateSignedPayload {
+  cert: Array<string>
+}
+
+export interface CertificateSignedResponse {
+  status: string // "Accepted","Rejected"
+}
