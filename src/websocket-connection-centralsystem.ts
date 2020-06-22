@@ -4,7 +4,6 @@ import Debug from 'debug';
 import {wsConRemoteConsoleRepository} from "./state-service";
 import {RemoteConsoleTransmissionType} from "./remote-console-connection";
 import {ChargepointOcpp16Json} from "./chargepoint";
-import {keyStore} from "./keystore";
 
 const debug = Debug('ocpp-chargepoint-simulator:simulator:WSConCentralSystem');
 
@@ -26,7 +25,7 @@ export class WSConCentralSystem{
     return new Promise((resolve, reject) => {
       const options = {} as WebSocket.ClientOptions;
       if (this.url.startsWith('wss://')) {
-        const keyStoreElement = keyStore.get(this.cpName);
+        const keyStoreElement = this.api.keyStore.get();
         if (keyStoreElement) {
           options.key = fs.readFileSync(keyStoreElement.key);
           options.cert = fs.readFileSync(keyStoreElement.cert);
