@@ -1,6 +1,6 @@
 import * as express from 'express';
 import Debug from 'debug';
-import {chargepointFactory} from "../../chargepoint";
+import {chargepointFactory, ChargepointOcpp16Json} from "../../chargepoint";
 import * as _eval from 'eval';
 import {RemoteConsoleTransmissionType, WSConRemoteConsole} from "../../remote-console-connection";
 import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from '../../state-service';
@@ -13,7 +13,7 @@ const cpRouter = express.Router();
 /**
  * use JavaScript coming from req.body and execute it.
  *
- * @param body: string - JavaScript using a variable connect with the signature (url: string): Promise<ChargepointOcpp16Json> or 
+ * @param body: string - JavaScript using a variable connect with the signature (url: string): Promise<ChargepointOcpp16Json> or
  *                       a variable cp: ChargepointOcpp16Json
  * @param route.cpName: string - chargepoint name
  * @return exception or "ok" for success
@@ -30,7 +30,7 @@ cpRouter.post('/:cpName?', async (req, res) => {
     return;
   }
   try {
-    const enhChargepointFactory = (url: string) => chargepointFactory(url, cpName);
+    const enhChargepointFactory = (url: string): Promise<ChargepointOcpp16Json> => chargepointFactory(url, cpName);
     const evalResp = _eval(javaScript, 'request-body', {}, true);
     const wsConCentralSystem = wsConCentralSystemRepository.get(cpName) as WSConCentralSystem;
     const chargepointOcpp16Json = wsConCentralSystem ? wsConCentralSystem.api : undefined;

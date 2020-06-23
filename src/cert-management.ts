@@ -17,7 +17,7 @@ export class CertManagement {
 
   async generateCsr(cpName: string): Promise<Csr> {
     const key = await exec('openssl genrsa').then(e => e.stdout);
-    return new Promise<any>((resolve, reject) => {
+    return new Promise<Csr>((resolve, reject) => {
       const child = execLib.exec(`openssl req -new -key /dev/stdin -subj "/C=DE/ST=Hessen/L=Frankfurt/O=Ocpp-Simulator/OU=Ocpp-Simulator/CN=${cpName}"`, ((error, stdout, stderr) => {
         if (error) {
           reject(error);

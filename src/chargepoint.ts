@@ -40,6 +40,11 @@ import {KeyStore} from "./keystore";
  */
 const debug = Debug('ocpp-chargepoint-simulator:simulator:ChargepointOcpp16Json');
 
+/** Counter to give each instance of ChargepointOcpp16Json a unique ID */
+// this is needed as the front-end knows only one (and only exactly one) instance, so the FE need to find the
+// latest instance (using the highest ID)
+let connectCounter = 0;
+
 /**
  * Generates a UUID v4 - e.g. 550e8400-e29b-11d4-a716-446655440000
  * Needed for the unique-id of a OCPP request
@@ -597,11 +602,6 @@ export class ChargepointOcpp16Json {
   }
 
 }
-
-/** Counter to give each instance of ChargepointOcpp16Json a unique ID */
-// this is needed as the front-end knows only one (and only exactly one) instance, so the FE need to find the
-// latest instance (using the highest ID)
-let connectCounter = 0;
 
 /**
  * Returns a Promise which resolves into a new instance of ChargepointOcpp16Json. Rejects if the connection attempt fails.
