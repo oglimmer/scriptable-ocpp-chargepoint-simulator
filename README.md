@@ -6,7 +6,7 @@
 
 This simulator supports:
 
-* OCPP 1.6 with JSON
+* OCPP 1.6 (and security) with JSON
 * REST API with HTML Frontend
 * File based batch mode
 * Fully scriptable in JavaScript
@@ -134,11 +134,11 @@ The simulator will respond to all `Trigger Message` with `status=NotImplemented`
 registered for this `requestedMessage`.
 
 OCPP 1.6 defines those requestedMessage:
-* "BootNotification",
-* "DiagnosticsStatusNotification",
-* "FirmwareStatusNotification",
-* "Heartbeat",
-* "MeterValues",
+* "BootNotification"
+* "DiagnosticsStatusNotification"
+* "FirmwareStatusNotification"
+* "Heartbeat"
+* "MeterValues"
 * "StatusNotification"
 
 Example for BootNotification
@@ -166,6 +166,17 @@ cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
 ``` 
  
 ### ExtendedTriggerMessage
+
+OCPP 1.6 security defines those requestedMessage:
+* "BootNotification"
+* "LogStatusNotification"
+* "FirmwareStatusNotification"
+* "Heartbeat"
+* "MeterValues"
+* "SignChargePointCertificate"
+* "StatusNotification"
+
+Example of SignChargePointCertificate:
 
 ```
 let tmpKey;
@@ -207,9 +218,9 @@ cp.answerCertificateSigned( async (request) => {
 * Get Configuration
 * Change Configuration
 * Change Availability
-* ExtendedTriggerMessage (1.6 secure)
-* SignCertificate (1.6 secure)
-* CertificateSigned (1.6 secure)
+* ExtendedTriggerMessage (1.6 security)
+* SignCertificate (1.6 security)
+* CertificateSigned (1.6 security)
 
 ### Not supported (yet)
 
