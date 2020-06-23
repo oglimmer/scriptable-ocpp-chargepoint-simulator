@@ -10,7 +10,8 @@ This simulator supports:
 * REST API with HTML Frontend
 * File based batch mode
 * Fully scriptable in JavaScript
-* ftp operations
+* ftp and csr operations
+* ws:// and wss:// (with client certificates)
 
 Key development considerations:
 
@@ -108,18 +109,12 @@ Open the docs in ./public/docs or access them via `./start.sh` and [http://local
 
 ## TLS options
 
-Start the server with a root CA file, a client cert and a client key:
+To pass a root CA file (to verify the server's certificate) use the --ca parameter from start.sh or set the env variable SSL_CERT_FILE.
 
-* SSL_CLIENT_KEY_FILE = client certificate key file
-* SSL_CLIENT_CERT_FILE = client certificate cert file
-* SSL_CERT_FILE = server certificate root CA file
+To set client certificates (for mTLS) for a charge point with the id `my-chargepoint-id` use the following parameters:
 
 ```
-SSL_CLIENT_KEY_FILE=path/to/key.pem \
-SSL_CLIENT_CERT_FILE=path/to/cert.pem \
-SSL_CERT_FILE=path/to/ca_root.pem \
-DEBUG='ocpp-chargepoint-simulator:simulator:*' \
-nodemon --use-openssl-ca build/src/main.js
+./start.sh --v1 --keyStore '[{"id": "my-chargepoint-id", "key": "private.pem", "cert": "cert.pem"}]' --ca ./ca.pem
 ```
 
 ## server operation - DEV mode
@@ -212,6 +207,9 @@ cp.answerCertificateSigned( async (request) => {
 * Get Configuration
 * Change Configuration
 * Change Availability
+* ExtendedTriggerMessage (1.6 secure)
+* SignCertificate (1.6 secure)
+* CertificateSigned (1.6 secure)
 
 ### Not supported (yet)
 

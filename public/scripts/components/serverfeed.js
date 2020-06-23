@@ -5,7 +5,7 @@ define(function (require) {
     <nav class="panel">
       <p class="panel-heading">
         OCPP communication log (
-          <button v-on:click="clear" class="button is-small is-rounded">Clear</button> 
+          <button v-on:click="clear" class="button is-small is-rounded">Clear</button>
           <label class="checkbox">
             <input type="checkbox" id="checkbox" v-model="hideHeartbeats">
             Hide Heartbeats

@@ -91,8 +91,6 @@ export class ChargepointOcpp16Json {
    */
   private readonly RESPONSE_TIMEOUT = 15000;
 
-  id : number;
-
   keyStore: KeyStore;
 
   /** Holds all requests currently not answered with a response  */
@@ -112,8 +110,7 @@ export class ChargepointOcpp16Json {
   private registeredCallbacksTriggerMessage: Map<string, (OcppRequest) => void> = new Map();
   private registeredCallbacksExtendedTriggerMessage: Map<string, (OcppRequest) => void> = new Map();
 
-  constructor(id: number) {
-    this.id = id;
+  constructor() {
     this.buildTriggerMessage();
     this.buildExtendedTriggerMessage();
   }
@@ -147,16 +144,15 @@ export class ChargepointOcpp16Json {
    */
   connect(url: string, cpName?: string): Promise<void> {
     debug('connect');
-    this.wsConCentralSystem = new WSConCentralSystem(url, this, cpName);
+    this.wsConCentralSystem = new WSConCentralSystem(connectCounter++, url, this, cpName);
     this.keyStore = new KeyStore(this.wsConCentralSystem.cpName);
     return this.wsConCentralSystem.connect();
   }
 
   reConnect(): Promise<void> {
-    debug('coreConnectnnect');
+    debug('reConnect');
     this.wsConCentralSystem.close();
-    this.wsConCentralSystem = new WSConCentralSystem(this.wsConCentralSystem.url, this, this.wsConCentralSystem.cpName);
-    this.id++;
+    this.wsConCentralSystem = new WSConCentralSystem(connectCounter++, this.wsConCentralSystem.url, this, this.wsConCentralSystem.cpName);
     return this.wsConCentralSystem.connect();
   }
   /**
@@ -617,7 +613,6 @@ export function chargepointFactory(url: string, cpName?: string): Promise<Charge
   if (wsConCentralSystemFromRepository && wsConCentralSystemFromRepository.ws.readyState === WebSocket.OPEN) {
     wsConCentralSystemFromRepository.close();
   }
-  connectCounter++;
-  const cp = new ChargepointOcpp16Json(connectCounter);
+  const cp = new ChargepointOcpp16Json();
   return cp.connect(url, cpName).then(() => cp);
 }
