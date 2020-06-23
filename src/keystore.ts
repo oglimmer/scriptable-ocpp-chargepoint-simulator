@@ -17,7 +17,11 @@ export class KeyStore {
   private data: Array<KeyStoreElement>;
 
   constructor(readonly cpName: string) {
-    this.data = JSON.parse(process.env.SSL_CLIENT_KEYSTORE);
+    if(process.env.SSL_CLIENT_KEYSTORE) {
+      this.data = JSON.parse(process.env.SSL_CLIENT_KEYSTORE);
+    } else {
+      this.data = [];
+    }
   }
 
   get(): KeyStoreElement {
