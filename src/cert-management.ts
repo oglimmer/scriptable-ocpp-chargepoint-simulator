@@ -24,7 +24,7 @@ export class CertManagement {
     // create the CSR, use a Unix Named pipe to read the key (usig /dev/stdin doesn't work on Ubuntu, so we need a named pipe)
     return new Promise<Csr>((resolve, reject) => {
       execLib.exec(`openssl req -new -key ${tmpNamedUnixPipe} -subj "/C=DE/ST=Hessen/L=Frankfurt/O=Ocpp-Simulator/OU=Ocpp-Simulator/CN=${cpName}"`, ((error, stdout, stderr) => {
-        fs.unlink(tmpNamedUnixPipe, err => { console.error(err)});
+        fs.unlink(tmpNamedUnixPipe, err => { if (err) {console.error(err)}});
         if (error) {
           reject(error);
         } else if (stderr) {
