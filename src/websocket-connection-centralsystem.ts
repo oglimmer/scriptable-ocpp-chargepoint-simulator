@@ -25,7 +25,9 @@ export class WSConCentralSystem{
     return new Promise((resolve, reject) => {
       const options = {} as WebSocket.ClientOptions;
       if (this.url.startsWith('wss://')) {
+        debug(`Secure connection detected: ${this.url}`);
         const keyStoreElement = this.api.keyStore.get();
+        debug(`Using files: ${JSON.stringify(keyStoreElement)}`);
         if (keyStoreElement) {
           options.key = fs.readFileSync(keyStoreElement.key);
           options.cert = fs.readFileSync(keyStoreElement.cert);

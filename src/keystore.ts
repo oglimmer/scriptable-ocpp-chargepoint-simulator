@@ -26,20 +26,15 @@ export class KeyStore {
 
   get(): KeyStoreElement {
     const element = this.data.filter(e => e.id == this.cpName);
-    if (element) {
+    if (element && element[0]) {
       return element[0];
     }
     return undefined;
   }
 
-  set(key: string, cert: string): void {
-    this.setKey(key);
-    this.setCert(cert);
-  }
-
   private setKey(key: string): void {
     const element = this.data.filter(e => e.id == this.cpName);
-    if (element) {
+    if (element && element[0]) {
       element[0].key = key;
     } else {
       const newElement = {} as KeyStoreElement;
@@ -51,7 +46,7 @@ export class KeyStore {
 
   private setCert(cert: string): void {
     const element = this.data.filter(e => e.id == this.cpName);
-    if (element) {
+    if (element && element[0]) {
       element[0].cert = cert;
     } else {
       const newElement = {} as KeyStoreElement;
@@ -61,11 +56,13 @@ export class KeyStore {
     }
   }
 
-  save(namePostfix: string): void {
-    const element = this.data.filter(e => e.id == this.cpName);
-    if (element) {
-      fs.writeFileSync(`/tmp/${this.cpName}${namePostfix}.key`, element[0].key);
-      fs.writeFileSync(`/tmp/${this.cpName}${namePostfix}.cert`, element[0].cert);
-    }
+  save(namePostfix: string, key: string, cert: string): Array<string> {
+    const keyFilename = `/tmp/${this.cpName}${namePostfix}.key`;
+    const certFilename = `/tmp/${this.cpName}${namePostfix}.cert`;
+    fs.writeFileSync(keyFilename, key);
+    fs.writeFileSync(certFilename, cert);
+    this.setKey(keyFilename);
+    this.setCert(certFilename);
+    return [keyFilename, certFilename];
   }
 }

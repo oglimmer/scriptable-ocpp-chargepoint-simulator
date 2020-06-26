@@ -583,9 +583,14 @@ export class ChargepointOcpp16Json {
     return ftpSupport.ftpDownload(fileLocation);
   }
 
-  generateCsr(): Promise<Csr> {
+  generateCsr(subject: string): Promise<Csr> {
     const certManagement = new CertManagement();
-    return certManagement.generateCsr(this.wsConCentralSystem.cpName);
+    return certManagement.generateCsr(subject);
+  }
+
+  convertDerToPem(derHexEncodedCert: string): Promise<string> {
+    const certManagement = new CertManagement();
+    return certManagement.convertDerToPem(derHexEncodedCert);
   }
 
   keystore(): KeyStore {
