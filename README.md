@@ -182,9 +182,9 @@ Example of SignChargePointCertificate:
 let tmpKey;
 cp.answerExtendedTriggerMessage("SignChargePointCertificate", async (request) => {
     cp.sendResponse(request.uniqueId, {status: "Accepted"});
-    const {key, csr} = await cp.generateCsr();
+    const {key, csr} = await cp.generateCsr('/OU=Ocpp-Simulator/O=Ocpp Simu Inc./L=Paradise City/ST=The State/C=US/CN=the-best-chargepoint');
     tmpKey = key;
-    await cp.sendSignCertificate({csr});
+    await cp.sendSignCertificate({csr, "typeOfCertificate": "ChargingStationCertificate"});
 });
 cp.answerCertificateSigned( async (request) => {
     if(!tmpKey) {
@@ -192,9 +192,13 @@ cp.answerCertificateSigned( async (request) => {
         return;
     }
     cp.sendResponse(request.uniqueId, {status: "Accepted"});
+    // request.payload.cert is Array<string>, strings are hex encoded DER format certs
+    const pemCerts = [];
+    for(let i = 0; i < request.payload.cert.length ; i++) {
+        pemCerts.push(await cp.convertDerToPem(request.payload.cert[i]));
+    }
     const keystore = cp.keystore();
-    keystore.set(tmpKey, request.cert.join('\n')); // cert is Array<string>
-    keystore.save("-" + new Date().toISOString());
+    const filenames = keystore.save("-" + new Date().toISOString(), tmpKey, pemCerts.join('\n'));
     await cp.reConnect();
     await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
 });

@@ -10,7 +10,8 @@ usage() {
     --v1 - enhanced verbosity, shows debug output on application and http-server level
     --v2 - full verbosity, shows all debug output
     --stdin - uses stdin to read JavaScript
-    --keyStore - path to PEM encoded private key file
+    --keyStore - json string. Array of objects with keys: id, key, cert. Where id is the cpName, key the filename to the key file, cert the filename to the cert file. All PEM encoded.
+    --keyStoreRoot - path where newly created keys/certs are being stored
     --ca - path to PEM encoded CA certificate file
     --h - shows this help
   " 1>&2
@@ -58,6 +59,10 @@ while [[ "${1:-}" =~ ^- ]] ; do
       ;;
     --keyStore)
       export SSL_CLIENT_KEYSTORE=$2
+      shift
+      ;;
+    --keyStoreRoot)
+      export SSL_CLIENT_KEYSTORE_ROOT=$2
       shift
       ;;
     --ca)

@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * KeyStoreElement, Holds id (usually the cp-name), key filename, cert filename.
@@ -57,8 +58,14 @@ export class KeyStore {
   }
 
   save(namePostfix: string, key: string, cert: string): Array<string> {
-    const keyFilename = `/tmp/${this.cpName}${namePostfix}.key`;
-    const certFilename = `/tmp/${this.cpName}${namePostfix}.cert`;
+    let basePath: string;
+    if (process.env.SSL_CLIENT_KEYSTORE_ROOT) {
+      basePath = process.env.SSL_CLIENT_KEYSTORE_ROOT;
+    } else {
+      basePath = path.join(__dirname, '../');
+    }
+    const keyFilename = path.join(basePath, `${this.cpName}${namePostfix}.key`);
+    const certFilename = path.join(basePath, `${this.cpName}${namePostfix}.cert`);
     fs.writeFileSync(keyFilename, key);
     fs.writeFileSync(certFilename, cert);
     this.setKey(keyFilename);
