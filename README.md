@@ -198,7 +198,10 @@ cp.answerCertificateSigned( async (request) => {
         pemCerts.push(await cp.convertDerToPem(request.payload.cert[i]));
     }
     const keystore = cp.keystore();
-    const filenames = keystore.save("-" + new Date().toISOString(), tmpKey, pemCerts.join('\n'));
+    // this will overwrite the current key/cert files
+    const filenames = keystore.save(false, tmpKey, pemCerts.join('\n'));
+    // alternatively certs/key can be written in a new file
+    // keystore.save('-' + new Date().toISOString(), tmpKey, pemCerts.join('\n'));
     await cp.reConnect();
     await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
 });

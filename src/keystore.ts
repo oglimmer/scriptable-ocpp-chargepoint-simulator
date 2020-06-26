@@ -57,15 +57,27 @@ export class KeyStore {
     }
   }
 
-  save(namePostfix: string, key: string, cert: string): Array<string> {
+  save(namePostfix: string | boolean, key: string, cert: string): Array<string> {
     let basePath: string;
     if (process.env.SSL_CLIENT_KEYSTORE_ROOT) {
       basePath = process.env.SSL_CLIENT_KEYSTORE_ROOT;
     } else {
       basePath = path.join(__dirname, '../');
     }
-    const keyFilename = path.join(basePath, `${this.cpName}${namePostfix}.key`);
-    const certFilename = path.join(basePath, `${this.cpName}${namePostfix}.cert`);
+    let certFilename, keyFilename;
+    if (namePostfix === false) {
+      const element = this.data.filter(e => e.id == this.cpName);
+      if (element && element[0]) {
+        keyFilename = path.join(element[0].key);
+        certFilename = path.join(element[0].cert);
+      }
+    }
+    if (!keyFilename) {
+      keyFilename = path.join(basePath, `${this.cpName}${namePostfix}.key`);
+    }
+    if (!certFilename) {
+      certFilename = path.join(basePath, `${this.cpName}${namePostfix}.cert`);
+    }
     fs.writeFileSync(keyFilename, key);
     fs.writeFileSync(certFilename, cert);
     this.setKey(keyFilename);
