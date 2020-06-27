@@ -34,6 +34,7 @@ import {
 } from "./ocpp1_6";
 import {CertManagement, Csr} from "./cert-management";
 import {KeyStore} from "./keystore";
+import {logger} from './http-post-logger';
 
 /**
  * Logger defintion
@@ -102,7 +103,7 @@ export class ChargepointOcpp16Json {
   private wsConCentralSystem: WSConCentralSystem;
 
   /** OCPP doesn't allow to send more than 1 message at a time. This queues messages until the last is answered. */
-  private readonly deferredMessageQueue : Array<string> = [];
+  private readonly deferredMessageQueue: Array<Array<number | string | object>> = [];
   /** Determines if a new message can be sent  */
   private isCurrentlyRequestNotAnswered = false;
   /** Holds all requests currently not answered with a response. Within a tick this might be out of sync with isCurrentlyRequestNotAnswered  */
@@ -134,8 +135,23 @@ export class ChargepointOcpp16Json {
    * @param output string or object send to the log output console
    */
   log(output: (string | object)): void {
-    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
-    wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_ERROR, output));
+    if (this.wsConCentralSystem) {
+      const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
+      wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_ERROR, output));
+    } else {
+      console.log('Failed to send log to remote-console');
+      console.log(output);
+    }
+  }
+
+  /**
+   * Send the output to a remote logger (connected by http-post-logger) and the log console.
+   *
+   * @param output string or object send to the remote log and the console log
+   */
+  logRemote(output: (string | object)): void {
+    this.log(output);
+    logger.log("ChargepointOcpp16Json:logRemote", this.wsConCentralSystem ? this.wsConCentralSystem.cpName : null, output);
   }
 
   /**
@@ -474,6 +490,7 @@ export class ChargepointOcpp16Json {
    */
   onMessage(ocppMessage: Array<number|string|object>): void {
     debug(`received: ${JSON.stringify(ocppMessage)}`);
+    logger.log("ChargepointOcpp16Json:onMessage", this.wsConCentralSystem.cpName, ocppMessage);
     const messageTypeId = ocppMessage[0] as number;
     const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
     if (messageTypeId === MessageType.CALLRESULT || messageTypeId === MessageType.CALLERROR) {
@@ -505,13 +522,14 @@ export class ChargepointOcpp16Json {
    *
    * @param data string to be sent. Must be a stringified OCPP request array.
    */
-  private trySendMessageOrDeferr(data: string): void {
+  private trySendMessageOrDeferr(data: Array<number | string | object>): void {
     if (this.isCurrentlyRequestNotAnswered === true) {
       debug(`sendToWebsocket, queueSize=${this.deferredMessageQueue.length}`);
       this.deferredMessageQueue.unshift(data);
     } else {
       this.isCurrentlyRequestNotAnswered = true;
-      this.wsConCentralSystem.send(data);
+      this.wsConCentralSystem.send(JSON.stringify(data));
+      logger.log("ChargepointOcpp16Json:trySendMessageOrDeferr", this.wsConCentralSystem.cpName, data);
     }
   }
 
@@ -523,7 +541,8 @@ export class ChargepointOcpp16Json {
     if (this.isCurrentlyRequestNotAnswered === true) {
       debug(`processDeferredMessages, queueSize=${this.deferredMessageQueue.length}`);
       const data = this.deferredMessageQueue.pop();
-      this.wsConCentralSystem.send(data);
+      this.wsConCentralSystem.send(JSON.stringify(data));
+      logger.log("ChargepointOcpp16Json:trySendMessageOrDeferr", this.wsConCentralSystem.cpName, data);
     }
   }
 
@@ -546,7 +565,7 @@ export class ChargepointOcpp16Json {
       });
       const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
       wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, req))
-      this.trySendMessageOrDeferr(JSON.stringify(ocppReqToArray(req)));
+      this.trySendMessageOrDeferr(ocppReqToArray(req));
     })
   }
 

@@ -4,6 +4,7 @@ import Debug from 'debug';
 import {wsConRemoteConsoleRepository} from "./state-service";
 import {RemoteConsoleTransmissionType} from "./remote-console-connection";
 import {ChargepointOcpp16Json} from "./chargepoint";
+import {logger} from "./http-post-logger";
 
 const debug = Debug('ocpp-chargepoint-simulator:simulator:WSConCentralSystem');
 
@@ -37,6 +38,7 @@ export class WSConCentralSystem{
       const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.cpName);
       this.ws.on('open', () => {
         debug(`Backend WS open. ${this.url}`);
+        logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS open. ${this.url}`);
         wsConRemoteConsoleArr.forEach(wsConRemoteConsole => {
           wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_STATUS, {
             id: this.id,
@@ -52,6 +54,7 @@ export class WSConCentralSystem{
       });
       this.ws.on('close', () => {
         debug(`Backend WS closed. ${this.url}`);
+        logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS open. ${this.url}`);
         if (this.api.onCloseCb) {
           this.api.onCloseCb();
         }
@@ -64,6 +67,7 @@ export class WSConCentralSystem{
       })
       this.ws.on('error', (event) => {
         debug(`Backend WS got error: ${event}`);
+        logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS open. ${this.url}`);
         if(!promiseResolved) {
           reject(event);
         } else {

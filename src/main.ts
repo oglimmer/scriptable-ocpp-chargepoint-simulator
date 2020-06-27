@@ -4,8 +4,16 @@ import * as fs from 'fs';
 import * as _eval from 'eval';
 import {chargepointFactory} from './chargepoint';
 import http from './http/http';
+import {logger} from "./http-post-logger";
 
 const debug = Debug('ocpp-chargepoint-simulator:main');
+
+logger.log("ChargepointOcpp16Json:main", null, 'app started');
+
+process.on('uncaughtException', function (err) {
+  console.error((err && err.stack) ? err.stack : err);
+  logger.log("ChargepointOcpp16Json:main", null, err);
+});
 
 function normalizeHost(val = 'localhost'): string {
   return val;
