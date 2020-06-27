@@ -192,19 +192,14 @@ cp.answerCertificateSigned( async (request) => {
         return;
     }
     cp.sendResponse(request.uniqueId, {status: "Accepted"});
-    // request.payload.cert is Array<string>, strings are hex encoded DER format certs
-    const pemCerts = [];
-    for(let i = 0; i < request.payload.cert.length ; i++) {
-        pemCerts.push(await cp.convertDerToPem(request.payload.cert[i]));
-    }
     const keystore = cp.keystore();
     // this will overwrite the current key/cert files
-    const filenames = keystore.save(false, tmpKey, pemCerts.join('\n'));
+    const filenames = keystore.save(false, tmpKey, request.payload.cert.join('\n'));
     // alternatively certs/key can be written in a new file
     // keystore.save('-' + new Date().toISOString(), tmpKey, pemCerts.join('\n'));
     await cp.reConnect();
     await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
-});
+}, cp.CERTIFICATE_SIGNED_OPTIONS_PEM_ENCODER());
 ```
 
 ### Supported
