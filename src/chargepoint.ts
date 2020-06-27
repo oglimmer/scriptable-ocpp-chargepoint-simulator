@@ -88,6 +88,21 @@ interface MessageListenerElement<T> {
 }
 
 /**
+ * Defines options used when registering OCPP answers
+ */
+interface AnswerOptions<T> {
+  requestConverter(resp: OcppRequest<T>): Promise<OcppRequest<T>>;
+}
+
+/**
+ * Stores a function called when a OCPP requested asked to be answered by the simulator. Also stores options for this.
+ */
+interface OcppRequestWithOptions<T> {
+  cb: (request: OcppRequest<T>) => void,
+  options?: AnswerOptions<T>
+}
+
+/**
  * Implements an OCPP 1.6 JSON speaking Chargepoint. This is the main API for a Chargepoint.
  */
 export class ChargepointOcpp16Json {
@@ -111,9 +126,9 @@ export class ChargepointOcpp16Json {
 
   /**
    * OCPP requests started from the central system need to be answered by code from this call.
-   * This map stores all ocpp message names (action) to the callback function implementing this OCPP message.
+   * This map stores all ocpp message names (action) to the callback function (with options) implementing this OCPP message.
    * */
-  private registeredCallbacks: Map<string, (OcppRequest) => void> = new Map();
+  private registeredCallbacks: Map<string, OcppRequestWithOptions<Payload>> = new Map();
   /**
    * Special cases: "TriggerMessage", to make the implementation easier, a user can register just the code for a type of
    * trigger-message and not the whole trigger message logic
@@ -300,9 +315,9 @@ export class ChargepointOcpp16Json {
    *
    * @param cb callback with signature (request: OcppRequest<GetDiagnosticsPayload>) => void
    */
-  answerGetDiagnostics<T>(cb: (request: OcppRequest<GetDiagnosticsPayload>) => void): void {
+  answerGetDiagnostics<T>(cb: (request: OcppRequest<GetDiagnosticsPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerGetDiagnostics');
-    this.registeredCallbacks.set("GetDiagnostics", cb);
+    this.registeredCallbacks.set("GetDiagnostics", {cb, options});
   }
 
   /**
@@ -311,9 +326,9 @@ export class ChargepointOcpp16Json {
    *
    * @param cb callback with signature (request: OcppRequest<UpdateFirmwarePayload>) => void
    */
-  answerUpdateFirmware<T>(cb: (request: OcppRequest<UpdateFirmwarePayload>) => void): void {
+  answerUpdateFirmware<T>(cb: (request: OcppRequest<UpdateFirmwarePayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerUpdateFirmware');
-    this.registeredCallbacks.set("UpdateFirmware", cb);
+    this.registeredCallbacks.set("UpdateFirmware", {cb, options});
   }
 
   /**
@@ -322,9 +337,9 @@ export class ChargepointOcpp16Json {
    *
    * @param cb callback with signature (request: OcppRequest<ResetPayload>) => void
    */
-  answerReset<T>(cb: (request: OcppRequest<ResetPayload>) => void): void {
+  answerReset<T>(cb: (request: OcppRequest<ResetPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerReset');
-    this.registeredCallbacks.set("Reset", cb);
+    this.registeredCallbacks.set("Reset", {cb, options});
   }
 
   /**
@@ -333,9 +348,9 @@ export class ChargepointOcpp16Json {
    *
    * @param cb callback with signature (request: OcppRequest<GetConfigurationPayload>) => void
    */
-  answerGetConfiguration<T>(cb: (request: OcppRequest<GetConfigurationPayload>) => void): void {
+  answerGetConfiguration<T>(cb: (request: OcppRequest<GetConfigurationPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerGetConfiguration');
-    this.registeredCallbacks.set("GetConfiguration", cb);
+    this.registeredCallbacks.set("GetConfiguration", {cb, options});
   }
 
   /**
@@ -344,9 +359,9 @@ export class ChargepointOcpp16Json {
    *
    * @param cb callback with signature (request: OcppRequest<ChangeConfigurationPayload>) => void
    */
-  answerChangeConfiguration<T>(cb: (request: OcppRequest<ChangeConfigurationPayload>) => void): void {
+  answerChangeConfiguration<T>(cb: (request: OcppRequest<ChangeConfigurationPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerChangeConfiguration');
-    this.registeredCallbacks.set("ChangeConfiguration", cb);
+    this.registeredCallbacks.set("ChangeConfiguration", {cb, options});
   }
 
   /**
@@ -355,9 +370,9 @@ export class ChargepointOcpp16Json {
    *
    * @param cb callback with signature (request: OcppRequest<ChangeAvailabilityPayload>) => void
    */
-  answerChangeAvailability<T>(cb: (request: OcppRequest<ChangeAvailabilityPayload>) => void): void {
+  answerChangeAvailability<T>(cb: (request: OcppRequest<ChangeAvailabilityPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerChangeAvailability');
-    this.registeredCallbacks.set("ChangeAvailability", cb);
+    this.registeredCallbacks.set("ChangeAvailability", {cb, options});
   }
 
   /**
@@ -366,9 +381,9 @@ export class ChargepointOcpp16Json {
    *
    * @param cb callback with signature (request: OcppRequest<CertificateSignedPayload>) => void
    */
-  answerCertificateSigned<T>(cb: (request: OcppRequest<CertificateSignedPayload>) => void): void {
+  answerCertificateSigned<T>(cb: (request: OcppRequest<CertificateSignedPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerCertificateSigned');
-    this.registeredCallbacks.set("CertificateSigned", cb);
+    this.registeredCallbacks.set("CertificateSigned", {cb, options});
   }
 
   /**
@@ -401,7 +416,7 @@ export class ChargepointOcpp16Json {
    * Builds the function put into this.registeredCallbacks
    */
   private buildTriggerMessage(): void {
-    const triggerMessageCallBack = (request: OcppRequest<TriggerMessagePayload>): void => {
+    const cb = (request: OcppRequest<TriggerMessagePayload>): void => {
       let requestedMethodRegistered = false;
       this.registeredCallbacksTriggerMessage.forEach((cb, requestedMessage) => {
         if (request.payload.requestedMessage === requestedMessage) {
@@ -413,14 +428,14 @@ export class ChargepointOcpp16Json {
         this.sendResponse(request.uniqueId, {status: "NotImplemented"});
       }
     };
-    this.registeredCallbacks.set("TriggerMessage", triggerMessageCallBack);
+    this.registeredCallbacks.set("TriggerMessage", {cb});
   }
 
   /**
    * Builds the function put into this.registeredCallbacks
    */
   private buildExtendedTriggerMessage(): void {
-    const extendedTriggerMessageCallBack = (request: OcppRequest<ExtendedTriggerMessagePayload>): void => {
+    const cb = (request: OcppRequest<ExtendedTriggerMessagePayload>): void => {
       let requestedMethodRegistered = false;
       this.registeredCallbacksExtendedTriggerMessage.forEach((cb, requestedMessage) => {
         if (request.payload.requestedMessage === requestedMessage) {
@@ -432,7 +447,7 @@ export class ChargepointOcpp16Json {
         this.sendResponse(request.uniqueId, {status: "NotImplemented"});
       }
     };
-    this.registeredCallbacks.set("ExtendedTriggerMessage", extendedTriggerMessageCallBack);
+    this.registeredCallbacks.set("ExtendedTriggerMessage", {cb});
   }
 
   /**
@@ -507,11 +522,15 @@ export class ChargepointOcpp16Json {
         uniqueId: ocppMessage[1],
         action: ocppMessage[2],
         payload: ocppMessage[3]
-      }
+      } as OcppRequest<Payload>;
       wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, ocppRequest))
-      this.registeredCallbacks.forEach((cb, action) => {
+      this.registeredCallbacks.forEach(async (ocppRequestWithOptions, action) => {
         if (action === ocppRequest.action) {
-          cb(ocppRequest);
+          let wrappedRequest = ocppRequest;
+          if (ocppRequestWithOptions.options && ocppRequestWithOptions.options.requestConverter) {
+            wrappedRequest = await ocppRequestWithOptions.options.requestConverter(ocppRequest);
+          }
+          ocppRequestWithOptions.cb(wrappedRequest);
         }
       });
     }
@@ -662,6 +681,24 @@ export class ChargepointOcpp16Json {
     this.onCloseCb = cb;
   }
 
+  /**
+   * Gets AnswerOptions for CertificateSigned operation which converts the hex encoded DER certs to PEM encoding.
+   */
+  CERTIFICATE_SIGNED_OPTIONS_PEM_ENCODER(): AnswerOptions<CertificateSignedPayload> {
+    return {
+      async requestConverter(resp: OcppRequest<CertificateSignedPayload>): Promise<OcppRequest<CertificateSignedPayload>> {
+        const promisesArr: Array<Promise<string>> = [];
+        const certManagement = new CertManagement();
+        for (let i = 0; i < resp.payload.cert.length; i++) {
+          promisesArr.push(certManagement.convertDerToPem(resp.payload.cert[i]));
+        }
+        return Promise.all(promisesArr).then(pemEncodedCertsArray => {
+          resp.payload.cert = pemEncodedCertsArray;
+          return resp;
+        });
+      }
+    }
+  }
 }
 
 /**
