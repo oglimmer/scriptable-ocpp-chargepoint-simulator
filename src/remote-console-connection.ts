@@ -17,10 +17,10 @@ const debugWSServerRemoteConsole = Debug('ocpp-chargepoint-simulator:simulator:W
  */
 export class WSConRemoteConsole {
 
-  constructor(private readonly ws: WebSocket, private readonly cpName: string) {
+  constructor(readonly ws: WebSocket, readonly cpName: string, readonly remoteHost, readonly userAgent) {
     ws.on('message', this.onMessage.bind(this));
     ws.on('close', this.onClose.bind(this));
-    debugWSConRemoteConsole(`Registered ${cpName}`);
+    debugWSConRemoteConsole(`Registered ${cpName} from ${remoteHost} using ${userAgent}`);
   }
 
   onMessage(message): void {
@@ -75,11 +75,13 @@ class WSServerRemoteConsole {
 
   onNewConnection(ws: WebSocket, req: http.IncomingMessage): void {
     const cpName = req.url.substr(1); // removing leading /
-    this.createWSConRemoteConsole(ws, cpName);
+    const {remoteAddress, remotePort} = req.connection;
+    const userAgent = req.headers['user-agent'];
+    this.createWSConRemoteConsole(ws, cpName, {remoteAddress, remotePort}, userAgent);
   }
 
-  private createWSConRemoteConsole(ws: WebSocket, cpName: string): void {
-    const wsConRemoteConsole = new WSConRemoteConsole(ws, cpName);
+  private createWSConRemoteConsole(ws: WebSocket, cpName: string, remoteHost, userAgent: string): void {
+    const wsConRemoteConsole = new WSConRemoteConsole(ws, cpName, remoteHost, userAgent);
     wsConRemoteConsoleRepository.add(cpName, wsConRemoteConsole);
     wsConRemoteConsole.updateCentralSystemConnectionStatus();
   }

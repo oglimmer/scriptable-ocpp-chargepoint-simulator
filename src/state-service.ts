@@ -19,10 +19,14 @@ class StateServiceWsConRemoteConsole {
 
   public get(cpName: string): Array<WSConRemoteConsole> {
     const arr = this.store.get(cpName);
-    if(!arr) {
+    if (!arr) {
       return [];
     }
     return arr;
+  }
+
+  public getAll(): Array<Array<WSConRemoteConsole>> {
+    return Array.from(this.store.values());
   }
 
   public remove(cpName: string, wsConRemoteConsole: WSConRemoteConsole): void {
@@ -53,6 +57,10 @@ class StateServiceWsConCentralSystem {
 
   public get(cpName: string): WSConCentralSystem {
     return this.store.get(cpName);
+  }
+
+  public getAll(): Array<WSConCentralSystem> {
+    return Array.from(this.store.values());
   }
 
   public remove(cpName: string): void {
