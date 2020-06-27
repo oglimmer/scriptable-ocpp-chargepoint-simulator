@@ -196,7 +196,7 @@ cp.answerCertificateSigned( async (request) => {
     // this will overwrite the current key/cert files
     const filenames = keystore.save(false, tmpKey, request.payload.cert.join('\n'));
     // alternatively certs/key can be written in a new file
-    // keystore.save('-' + new Date().toISOString(), tmpKey, pemCerts.join('\n'));
+    // keystore.save('-' + new Date().toISOString(), tmpKey, request.payload.cert.join('\n'));
     await cp.reConnect();
     await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
 }, cp.CERTIFICATE_SIGNED_OPTIONS_PEM_ENCODER());
