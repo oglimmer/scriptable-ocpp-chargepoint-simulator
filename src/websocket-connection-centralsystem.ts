@@ -13,7 +13,6 @@ const debug = Debug('ocpp-chargepoint-simulator:simulator:WSConCentralSystem');
 export class WSConCentralSystem{
 
   ws: WebSocket;
-  onCloseCb: () => void; // TODO: need to move to ChargepointOcpp16Json
 
   constructor(readonly id: number, readonly url: string, readonly api: ChargepointOcpp16Json, readonly cpName?: string) {
     if (!this.cpName) {
@@ -53,8 +52,8 @@ export class WSConCentralSystem{
       });
       this.ws.on('close', () => {
         debug(`Backend WS closed. ${this.url}`);
-        if (this.onCloseCb) {
-          this.onCloseCb();
+        if (this.api.onCloseCb) {
+          this.api.onCloseCb();
         }
         wsConRemoteConsoleArr.forEach(wsConRemoteConsole => {
           wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_STATUS, {
@@ -83,10 +82,6 @@ export class WSConCentralSystem{
 
   close(): void {
     this.ws.close();
-  }
-
-  onClose(cb: () => void): void {
-    this.onCloseCb = cb;
   }
 
 }

@@ -120,6 +120,9 @@ export class ChargepointOcpp16Json {
   private registeredCallbacksTriggerMessage: Map<string, (OcppRequest) => void> = new Map();
   private registeredCallbacksExtendedTriggerMessage: Map<string, (OcppRequest) => void> = new Map();
 
+  /** holds a callback for onClose, may be null */
+  onCloseCb: () => void;
+
   constructor() {
     this.buildTriggerMessage();
     this.buildExtendedTriggerMessage();
@@ -637,7 +640,7 @@ export class ChargepointOcpp16Json {
    * @param cb a callback function
    */
   onClose(cb: () => void): void {
-    this.wsConCentralSystem.onClose(cb);
+    this.onCloseCb = cb;
   }
 
 }
