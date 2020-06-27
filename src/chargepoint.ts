@@ -98,10 +98,15 @@ export class ChargepointOcpp16Json {
 
   keyStore: KeyStore;
 
-  /** Holds all requests currently not answered with a response  */
-  private openRequests: Array<MessageListenerElement<Payload>> = [];
   /** Reference to the class handling the WebSocket connection to the central system  */
   private wsConCentralSystem: WSConCentralSystem;
+
+  /** OCPP doesn't allow to send more than 1 message at a time. This queues messages until the last is answered. */
+  private readonly deferredMessageQueue : Array<string> = [];
+  /** Determines if a new message can be sent  */
+  private isCurrentlyRequestNotAnswered = false;
+  /** Holds all requests currently not answered with a response. Within a tick this might be out of sync with isCurrentlyRequestNotAnswered  */
+  private registeredOpenRequests: Array<MessageListenerElement<Payload>> = [];
 
   /**
    * OCPP requests started from the central system need to be answered by code from this call.
@@ -493,6 +498,33 @@ export class ChargepointOcpp16Json {
   }
 
   /**
+   * Tries to send a message (data) via the WebSocket to the central system. It might deferr this, if an OCPP message is currenlty in progress.
+   *
+   * @param data string to be sent. Must be a stringified OCPP request array.
+   */
+  private trySendMessageOrDeferr(data: string): void {
+    if (this.isCurrentlyRequestNotAnswered === true) {
+      debug(`sendToWebsocket, queueSize=${this.deferredMessageQueue.length}`);
+      this.deferredMessageQueue.unshift(data);
+    } else {
+      this.isCurrentlyRequestNotAnswered = true;
+      this.wsConCentralSystem.send(data);
+    }
+  }
+
+  /**
+   * When a message was answered, this checks if there are deferred messages waiting to be sent.
+   */
+  private processDeferredMessages(): void {
+    this.isCurrentlyRequestNotAnswered = this.deferredMessageQueue.length > 0;
+    if (this.isCurrentlyRequestNotAnswered === true) {
+      debug(`processDeferredMessages, queueSize=${this.deferredMessageQueue.length}`);
+      const data = this.deferredMessageQueue.pop();
+      this.wsConCentralSystem.send(data);
+    }
+  }
+
+  /**
    * Sends an OCPP message to the central system. The promise resolves when the central system sends a CALLRESULT. It rejects when the timeout is due.
    *
    * @param req OCPP request object
@@ -501,15 +533,17 @@ export class ChargepointOcpp16Json {
     debug(`send: ${JSON.stringify(req)}`);
     return new Promise((resolve: (T) => void, reject: (string) => void) => {
       const timeoutHandle = setTimeout(() => {
+        this.processDeferredMessages(); // Not sure, if we should proceed sending messages, if we just got a timeout and not an actual response.
         reject(`Timeout waiting for ${JSON.stringify(req)}`)
       }, this.RESPONSE_TIMEOUT);
       this.registerRequest(req, (resp) => {
+        this.processDeferredMessages();
         clearTimeout(timeoutHandle);
         resolve(resp);
       });
       const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
       wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, req))
-      this.wsConCentralSystem.send(JSON.stringify(ocppReqToArray(req)));
+      this.trySendMessageOrDeferr(JSON.stringify(ocppReqToArray(req)));
     })
   }
 
@@ -545,8 +579,8 @@ export class ChargepointOcpp16Json {
    * @param resp OCPP response
    */
   private triggerRequestResult<T>(resp: OcppResponse<T>): void {
-    this.openRequests.filter(e => resp.uniqueId === e.request.uniqueId).forEach(e => e.next(resp.payload));
-    this.openRequests = this.openRequests.filter(e => resp.uniqueId !== e.request.uniqueId);
+    this.registeredOpenRequests.filter(e => resp.uniqueId === e.request.uniqueId).forEach(e => e.next(resp.payload));
+    this.registeredOpenRequests = this.registeredOpenRequests.filter(e => resp.uniqueId !== e.request.uniqueId);
   }
 
   /**
@@ -556,7 +590,7 @@ export class ChargepointOcpp16Json {
    * @param next callback function to call when the response arrived
    */
   private registerRequest<T>(req: OcppRequest<T>, next: (resp: Payload) => void): void {
-    this.openRequests.push({
+    this.registeredOpenRequests.push({
       request: req,
       next: next
     });
