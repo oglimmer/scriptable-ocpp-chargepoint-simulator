@@ -1,0 +1,27 @@
+{
+  "version": "2.0.2",
+  "compilerOptions": {
+    "lib": [
+      "es5",
+      "es2015.promise",
+      "dom",
+      "es2015"
+    ],
+    "target": "es5",
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "outDir": "dist",
+    "module": "AMD",
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "declaration": false,
+    "sourceMap": true
+  },
+  "exclude": [
+    "node_modules",
+    "__tests__"
+  ]
+}

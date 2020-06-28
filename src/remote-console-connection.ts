@@ -1,4 +1,4 @@
-import * as WebSocket from 'ws';
+import * as WebSocket from 'isomorphic-ws';
 import http from "http";
 import Debug from 'debug';
 import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from './state-service';

@@ -2,6 +2,7 @@ define(function (require) {
   let Vue = require('libs/vue');
   let Vuex = require('libs/vuex');
   let axios = require('libs/axios');
+  let chargepoint = require('ws/chargepoint');
 
   Vue.use(Vuex);
 
@@ -169,9 +170,12 @@ define(function (require) {
     },
     actions: {
       async sendToServer(context) {
+        const connect = chargepoint.chargepointFactory;
+        console.log("connect:" + connect);
         try {
           context.commit('commandInProgress', true);
-          await axios.post(`/cp/${context.state.cpName}`, context.state.inputText, {headers: {'content-type': 'application/javascript'}});
+          console.log(context.state.inputText);
+          eval(context.state.inputText);
           context.commit('updateInputText', '');
           context.commit('commandInProgress', false);
         } catch (err) {

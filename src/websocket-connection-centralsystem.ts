@@ -1,4 +1,4 @@
-import * as WebSocket from 'ws';
+import * as WebSocket from 'isomorphic-ws';
 import * as fs from 'fs';
 import Debug from 'debug';
 import {wsConRemoteConsoleRepository} from "./state-service";
@@ -36,7 +36,7 @@ export class WSConCentralSystem{
       this.ws = new WebSocket(this.url, "ocpp1.6", options);
       let promiseResolved = false;
       const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.cpName);
-      this.ws.on('open', () => {
+      this.ws.onopen = () => {
         debug(`Backend WS open. ${this.url}`);
         logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS open. ${this.url}`);
         wsConRemoteConsoleArr.forEach(wsConRemoteConsole => {
@@ -47,12 +47,12 @@ export class WSConCentralSystem{
         });
         resolve();
         promiseResolved = true;
-      })
-      this.ws.on('message', (data: string) => {
-        const ocppMessage = JSON.parse(data);
+      };
+      this.ws.onmessage = (data: WebSocket.MessageEvent) => {
+        const ocppMessage = JSON.parse(data.data.toString());
         this.api.onMessage(ocppMessage);
-      });
-      this.ws.on('close', () => {
+      };
+      this.ws.onclose = () => {
         debug(`Backend WS closed. ${this.url}`);
         logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS open. ${this.url}`);
         if (this.api.onCloseCb) {
@@ -64,18 +64,18 @@ export class WSConCentralSystem{
             description: "closed."
           });
         })
-      })
-      this.ws.on('error', (event) => {
+      };
+      this.ws.onerror = (event) => {
         debug(`Backend WS got error: ${event}`);
         logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS open. ${this.url}`);
-        if(!promiseResolved) {
+        if (!promiseResolved) {
           reject(event);
         } else {
           wsConRemoteConsoleArr.forEach(wsConRemoteConsole => {
             wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_ERROR, event);
           });
         }
-      })
+      };
     })
   }
 

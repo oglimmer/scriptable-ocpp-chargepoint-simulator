@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import * as WebSocket from 'ws';
+import * as WebSocket from 'isomorphic-ws';
 import {RemoteConsoleTransmissionType, WSConRemoteConsole} from "./remote-console-connection";
 import {WSConCentralSystem} from "./websocket-connection-centralsystem";
 import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from "./state-service";
