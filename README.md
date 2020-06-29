@@ -87,6 +87,25 @@ Start it:
 cat custom.js | ./start.sh --v --stdin
 ```
 
+### Remote manipulation for the batch mode
+
+You can start a web server within the batch operation script to allow the manipulation or observation of the script.
+
+```
+const webserver = cp.startListener(8080, '0.0.0.0', {'admin': 'secret'});
+webserver.get('/stop', (req, res) => {
+    res.send('stopped.');
+    webserver.terminate();
+});
+webserver.get('/availability', (req, res) => {
+    // this assumes we're storing the current availability in a variable called 'availability'
+    res.send(availability);
+});
+```
+
+This example starts a web server on 0.0.0.0:8080 using basic authentication. A user 'admin' with the password 'secret' allows under /stop to stop
+ the webserver and under /availability to retrieve the charge points availability. 
+
 ## server operation
 
 Default port for HTML is 3000. Change via env variable `PORT`. The WebSocket based Server to Client communication is using `PORT+1`.

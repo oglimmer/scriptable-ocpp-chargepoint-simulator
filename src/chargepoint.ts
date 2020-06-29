@@ -35,6 +35,11 @@ import {
 import {CertManagement, Csr} from "./cert-management";
 import {KeyStore} from "./keystore";
 import {logger} from './http-post-logger';
+import * as http from "http";
+import * as express from "express";
+import {IRouter} from "express";
+import {createHttpTerminator} from 'http-terminator';
+import * as expressBasicAuth from "express-basic-auth";
 
 /**
  * Logger defintion
@@ -679,6 +684,34 @@ export class ChargepointOcpp16Json {
    */
   onClose(cb: () => void): void {
     this.onCloseCb = cb;
+  }
+
+  /**
+   * Starts a web listener (aka web server), usually used in batch mode only. Use the returned IRouter to add routes. Also the returned IRouter
+   * instance has a method 'terminate()' to gracefully shutdown the web server.
+   *
+   * @param port to bind
+   * @param bind address, default localhost
+   * @param users when given basic authentication is enabled with user: password
+   */
+  startListener(port: number, bind?: string, users?: { [username: string]: string }): IRouter {
+    const expressInit = express();
+    expressInit.use(express.json());
+    const server = http.createServer(expressInit);
+    server.listen(port, bind);
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      console.error(error);
+    });
+    server.on('listening', () => {
+      const addr = server.address();
+      debug(`Listening on ${JSON.stringify(addr)}`);
+    });
+    const httpTerminator = createHttpTerminator({server})
+    expressInit['terminate'] = () => httpTerminator.terminate();
+    if (users) {
+      expressInit.use(expressBasicAuth({users}));
+    }
+    return expressInit;
   }
 
   /**
