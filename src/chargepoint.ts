@@ -20,15 +20,15 @@ import {
   OcppRequest,
   OcppResponse,
   Payload,
-  ResetPayload,
+  ResetPayload, SampledValue,
   StartTransactionPayload,
   StartTransactionResponse,
   StatusNotificationPayload,
   StopTransactionPayload,
-  StopTransactionResponse,
+  StopTransactionResponse, TransactionData,
   TriggerMessagePayload,
-  UpdateFirmwarePayload
-} from "./ocpp1_6";
+  UpdateFirmwarePayload,
+} from './ocpp1_6';
 
 const debug = Debug('ocpp-chargepoint-simulator:simulator:ChargepointOcpp16Json');
 
@@ -66,6 +66,8 @@ export class ChargepointOcpp16Json {
 
   private registeredCallbacks: Map<string, (OcppRequest) => void> = new Map();
   private registeredCallbacksTriggerMessage: Map<string, (OcppRequest) => void> = new Map();
+
+  public transaction: StartTransactionResponse;
 
   constructor(readonly id: number) {
     this.buildTriggerMessage();
@@ -186,6 +188,33 @@ export class ChargepointOcpp16Json {
   answerChangeAvailability<T>(cb: (request: OcppRequest<ChangeAvailabilityPayload>) => void): void {
     debug('answerChangeAvailability');
     this.registeredCallbacks.set("ChangeAvailability", cb);
+  }
+
+  answerRemoteStartTransaction<T>(cb: (request: OcppRequest<ChangeAvailabilityPayload>) => void): void {
+    debug('answerRemoteStartTransaction');
+    this.registeredCallbacks.set('RemoteStartTransaction', async (request: OcppRequest<ChangeAvailabilityPayload>) => {
+      await cb(request);
+
+      await this.sendAuthorize({ idTag: request.payload['idTag'] });
+      await this.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Preparing' });
+
+      this.transaction = await this.startTransaction({
+        connectorId: 1,
+        idTag: request.payload['idTag'],
+        meterStart: 1377,
+        timestamp: '2020-06-30T12:26:57.167Z',
+      } as StartTransactionPayload);
+      await this.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Charging' });
+
+      await this.meterValues({
+        connectorId: 1,
+        transactionId: this.transaction.transactionId,
+        meterValue: [{
+          timestamp: '2020-06-30T12:27:03.198Z',
+          sampledValue: [{ value: '1387' } as SampledValue],
+        } as TransactionData],
+      } as MeterValuesPayload);
+    });
   }
 
   answerTriggerMessage<T>(requestedMessage: string, cb: (request: OcppRequest<TriggerMessagePayload>) => void): void {
