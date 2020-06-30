@@ -27,14 +27,7 @@ This software is licensed under [Apache License, Version 2.0](https://www.apache
 
 ## install & build
 
-Make sure you've node installed (macOS: `brew install node`).
-
-```
-# install dependencies
-npm i
-# transpile TypeScript into ECMAScript
-npm run build
-```
+Make sure you've npm installed.
 
 ## batch operation
 
@@ -121,7 +114,7 @@ Example: `http://localhost:3000/?connectTemplate=ws://foobar:8088/charging&cp=ch
 ## Create API docs
 
 ```
-npm run build && npm run docs
+npm run docs
 ```
 
 Open the docs in ./public/docs or access them via `./start.sh` and [http://localhost:3000/docs](http://localhost:3000/docs)
@@ -138,10 +131,9 @@ To set client certificates (for mTLS) for a charge point with the id `my-chargep
 
 ## server operation - DEV mode
 
-Run those 2 in parallel:
+Run:
 
 ```
-npm run build:watch
 ./start.sh --v1 --d
 ```
 

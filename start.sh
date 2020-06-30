@@ -21,7 +21,16 @@ exit_abnormal() {
   exit 1
 }
 
-BIN=node
+if ! npm --version >/dev/null 2>&1; then
+  echo "npm not installed. Abort."
+  exit 1
+fi
+
+if [ ! -d "node_modules" ]; then
+  npm i
+fi
+
+DEV=
 STDIN=
 
 while [[ "${1:-}" =~ ^- ]] ; do
@@ -43,7 +52,7 @@ while [[ "${1:-}" =~ ^- ]] ; do
       exit 0
       ;;
     --d)
-      BIN=nodemon
+      DEV=TRUE
       ;;
     --v)
       export DEBUG=ocpp-chargepoint-simulator:simulator:*
@@ -82,4 +91,9 @@ if [ -z "${DEBUG:-}" ]; then
     echo "No debug output configured."
 fi
 
-$BIN build/src/main.js $STDIN "$@"
+if [ -n "$DEV" ]; then
+  [ -n "$STDIN" ] && echo "You cannot combine dev and stdin" && exit 1
+  npm run dev "$@"
+else
+  ./node_modules/.bin/ts-node --project ./tsconfig.release.json ./src/main.ts $STDIN "$@"
+fi
