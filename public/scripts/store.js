@@ -25,7 +25,7 @@ define(function (require) {
       startup(state) {
         let text = '';
         if(state.wsStatus.startsWith('closed')) {
-          text += `cp = await connect('${baseUrl}/${state.cpName}');\n`;
+          text += `cp = await connect('${state.connectTemplate}/${state.cpName}');\n`;
         }
         text += 'const bootResp = await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
           'await cp.sendHeartbeat();\n' +
@@ -118,7 +118,7 @@ define(function (require) {
       updateWsStatus(state, value) {
         if (state.wsStatusLastId <= value.id) {
           if(state.wsStatus === '' && value.description.startsWith('closed')) {
-            state.inputText = `cp = await connect('${baseUrl}/${state.cpName}');\n`;
+            state.inputText = `cp = await connect('${state.connectTemplate}/${state.cpName}');\n`;
           }
           state.wsStatus = value.description;
           state.wsStatusLastId = value.id;
@@ -127,8 +127,9 @@ define(function (require) {
       updateWsError(state, value) {
         state.wsError.push(value);
       },
-      setCpName(state, value) {
-        state.cpName = value;
+      setUrlParams(state, value) {
+        state.cpName = value.cpName;
+        state.connectTemplate = value.connectTemplate ? value.connectTemplate : baseUrl;
       },
       ocppMessages(state, value) {
         const {messageTypeId, uniqueId, action} = value;
@@ -161,6 +162,9 @@ define(function (require) {
       },
       clearOcppMessages(state, value) {
         state.ocppMessages = [];
+      },
+      clearErrors(state, value) {
+        state.wsError = [];
       },
       commandInProgress(state, value) {
         state.commandInProgress = value;

@@ -6,6 +6,7 @@ import * as logger from 'morgan';
 
 import {htmlRouter} from './routes/html';
 import {cpRouter} from './routes/cp';
+import {adminRouter} from './routes/admin';
 
 const debug = Debug('ocpp-chargepoint-simulator:express:init');
 
@@ -25,6 +26,7 @@ expressInit.use(express.static(path.join(__dirname, '../../..', 'public')));
 
 expressInit.use('/', htmlRouter);
 expressInit.use('/cp', cpRouter);
+expressInit.use('/admin', adminRouter);
 
 // catch 404 and forward to error handler
 expressInit.use((req, res) => {

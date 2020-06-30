@@ -22,13 +22,17 @@ define(function (require) {
         return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
       }
     }
+    return 'DEFAULT';
   };
 
   new Vue({
     el: '#main',
     store: store,
     created() {
-      this.$store.commit('setCpName', getUrlParameter('cp'));
+      this.$store.commit('setUrlParams', {
+        cpName: getUrlParameter('cp'),
+        connectTemplate: getUrlParameter('connectTemplate')
+      });
     },
     template: `
       <div>

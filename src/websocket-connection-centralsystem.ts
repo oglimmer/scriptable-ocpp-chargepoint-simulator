@@ -4,6 +4,7 @@ import Debug from 'debug';
 import {wsConRemoteConsoleRepository} from "./state-service";
 import {RemoteConsoleTransmissionType} from "./remote-console-connection";
 import {ChargepointOcpp16Json} from "./chargepoint";
+import {logger} from "./http-post-logger";
 
 const debug = Debug('ocpp-chargepoint-simulator:simulator:WSConCentralSystem');
 
@@ -13,22 +14,23 @@ const debug = Debug('ocpp-chargepoint-simulator:simulator:WSConCentralSystem');
 export class WSConCentralSystem{
 
   ws: WebSocket;
-  readonly cpName: string;
-  onCloseCb: () => void;
 
-  constructor(readonly url: string, readonly api: ChargepointOcpp16Json) {
-    this.cpName = url.substr(url.lastIndexOf('/') + 1);
+  constructor(readonly id: number, readonly url: string, readonly api: ChargepointOcpp16Json, readonly cpName?: string) {
+    if (!this.cpName) {
+      this.cpName = this.url.substr(this.url.lastIndexOf('/') + 1);
+    }
   }
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const options = {} as WebSocket.ClientOptions;
       if (this.url.startsWith('wss://')) {
-        if (process.env.SSL_CLIENT_KEY_FILE) {
-          options.key = fs.readFileSync(process.env.SSL_CLIENT_KEY_FILE);
-        }
-        if (process.env.SSL_CLIENT_CERT_FILE) {
-          options.cert = fs.readFileSync(process.env.SSL_CLIENT_CERT_FILE);
+        debug(`Secure connection detected: ${this.url}`);
+        const keyStoreElement = this.api.keyStore.get();
+        debug(`Using files: ${JSON.stringify(keyStoreElement)}`);
+        if (keyStoreElement) {
+          options.key = fs.readFileSync(keyStoreElement.key);
+          options.cert = fs.readFileSync(keyStoreElement.cert);
         }
       }
       this.ws = new WebSocket(this.url, "ocpp1.6", options);
@@ -36,30 +38,36 @@ export class WSConCentralSystem{
       const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.cpName);
       this.ws.on('open', () => {
         debug(`Backend WS open. ${this.url}`);
+        logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS open. ${this.url}`);
         wsConRemoteConsoleArr.forEach(wsConRemoteConsole => {
           wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_STATUS, {
-            id: this.api.id,
+            id: this.id,
             description: `open (${this.url})`
           });
         });
         resolve();
         promiseResolved = true;
       })
-      this.ws.on('message', (data: string) => this.api.onMessage(data));
+      this.ws.on('message', (data: string) => {
+        const ocppMessage = JSON.parse(data);
+        this.api.onMessage(ocppMessage);
+      });
       this.ws.on('close', () => {
         debug(`Backend WS closed. ${this.url}`);
-        if (this.onCloseCb) {
-          this.onCloseCb();
+        logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS open. ${this.url}`);
+        if (this.api.onCloseCb) {
+          this.api.onCloseCb();
         }
         wsConRemoteConsoleArr.forEach(wsConRemoteConsole => {
           wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_STATUS, {
-            id: this.api.id,
+            id: this.id,
             description: "closed."
           });
         })
       })
       this.ws.on('error', (event) => {
         debug(`Backend WS got error: ${event}`);
+        logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS open. ${this.url}`);
         if(!promiseResolved) {
           reject(event);
         } else {
@@ -78,10 +86,6 @@ export class WSConCentralSystem{
 
   close(): void {
     this.ws.close();
-  }
-
-  onClose(cb: () => void): void {
-    this.onCloseCb = cb;
   }
 
 }

@@ -6,11 +6,12 @@
 
 This simulator supports:
 
-* OCPP 1.6 with JSON
+* OCPP 1.6 (and security) with JSON
 * REST API with HTML Frontend
 * File based batch mode
 * Fully scriptable in JavaScript
-* ftp operations
+* ftp and csr operations
+* ws:// and wss:// (with client certificates)
 
 Key development considerations:
 
@@ -43,76 +44,96 @@ parameter. This parameter will pass the `connect(url: string): Chargepoint` func
 Example:
 
 ```
-module.exports = async (connect) => {
-  let cp;
-  try {
-    // WebSocket Connect (no OCPP)
-    cp = await connect('ws://localhost:8100/xyz');
-    // typical startup OCPP
-    await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
-    await cp.sendHeartbeat();
-    await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
-    // register code for GetDiagnostics, UpdateFirmware, Reset, ...
-    cp.answerGetDiagnostics( async (request) => {
-      const fileName = "foo." + new Date().toISOString() + ".txt";
-      cp.sendResponse(request.uniqueId, {fileName});
-      await cp.sendDiagnosticsStatusNotification({status: "Idle"});
-      await cp.sleep(5000);
-      await cp.sendDiagnosticsStatusNotification({status: "Uploading"});
-      await cp.ftpUploadDummyFile(request.payload.location, fileName);
-      await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});
-    });
-    // Typical charging session
-    await cp.sendAuthorize({idTag: "ccc"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Preparing"});
-    cp.transaction = await cp.startTransaction({connectorId: 1, idTag: "ccc", meterStart: 1377, timestamp: "2020-06-11T10:50:58.333Z"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Charging"});
-    await cp.meterValues({connectorId: 1, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: "2020-06-11T10:50:58.765Z", sampledValue: [{value: 1387}] }]});
-    await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "2020-06-11T10:50:59.148Z"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});
-    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
-  } catch (err) {
-    console.log(err);
-  } finally {
-    cp.close();
-  }
+let cp;
+try {
+  // WebSocket Connect (no OCPP)
+  cp = await connect('ws://localhost:8100/xyz');
+  // typical startup OCPP
+  await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
+  await cp.sendHeartbeat();
+  await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
+  // register code for GetDiagnostics, UpdateFirmware, Reset, ...
+  cp.answerGetDiagnostics( async (request) => {
+    const fileName = "foo." + new Date().toISOString() + ".txt";
+    cp.sendResponse(request.uniqueId, {fileName});
+    await cp.sendDiagnosticsStatusNotification({status: "Idle"});
+    await cp.sleep(5000);
+    await cp.sendDiagnosticsStatusNotification({status: "Uploading"});
+    await cp.ftpUploadDummyFile(request.payload.location, fileName);
+    await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});
+  });
+  // Typical charging session
+  await cp.sendAuthorize({idTag: "ccc"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Preparing"});
+  cp.transaction = await cp.startTransaction({connectorId: 1, idTag: "ccc", meterStart: 1377, timestamp: "2020-06-11T10:50:58.333Z"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Charging"});
+  await cp.meterValues({connectorId: 1, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: "2020-06-11T10:50:58.765Z", sampledValue: [{value: 1387}] }]});
+  await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "2020-06-11T10:50:59.148Z"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});
+  await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});
+} catch (err) {
+  console.log(err);
+} finally {
+  cp.close();
 }
 ```
 
 Start it:
 
 ```
-DEBUG='ocpp-chargepoint-simulator:chargepoint' node build/src/main.js ./custom.js
+./start.sh --v ./custom.js
+# or
+cat custom.js | ./start.sh --v --stdin
 ```
 
-'ocpp-chargepoint-simulator:chargepoint' will just print OCPP messages.
-Use 'ocpp-chargepoint-simulator:*' instead for full debugging. 
+### Remote manipulation for the batch mode
+
+You can start a web server within the batch operation script to allow the manipulation or observation of the script.
+
+```
+const webserver = cp.startListener(8080, '0.0.0.0', {'admin': 'secret'});
+webserver.get('/stop', (req, res) => {
+    res.send('stopped.');
+    webserver.terminate();
+});
+webserver.get('/availability', (req, res) => {
+    // this assumes we're storing the current availability in a variable called 'availability'
+    res.send(availability);
+});
+```
+
+This example starts a web server on 0.0.0.0:8080 using basic authentication. A user 'admin' with the password 'secret' allows under /stop to stop
+ the webserver and under /availability to retrieve the charge points availability. 
 
 ## server operation
 
 Default port for HTML is 3000. Change via env variable `PORT`. The WebSocket based Server to Client communication is using `PORT+1`.
 
 ```
-DEBUG='ocpp-chargepoint-simulator:*' node build/src/main.js
+./start.sh --v
 ```
 
-Open http://localhost:3000/?cp=$chargePointName where chargePointName defines the ID of your chargepoint.
+Open `http://localhost:3000/?connectTemplate=$connectUrl&cp=$chargePointName` where chargePointName defines the ID of your chargepoint and connectUrl the connect string without the chargepoint-id at the end.
+
+Example: `http://localhost:3000/?connectTemplate=ws://foobar:8088/charging&cp=chargepoint001`.
+
+## Create API docs
+
+```
+npm run build && npm run docs
+```
+
+Open the docs in ./public/docs or access them via `./start.sh` and [http://localhost:3000/docs](http://localhost:3000/docs)
 
 ## TLS options
 
-Start the server with a root CA file, a client cert and a client key:
+To pass a root CA file (to verify the server's certificate) use the --ca parameter from start.sh or set the env variable SSL_CERT_FILE.
 
-* SSL_CLIENT_KEY_FILE = client certificate key file
-* SSL_CLIENT_CERT_FILE = client certificate cert file
-* SSL_CERT_FILE = server certificate root CA file
+To set client certificates (for mTLS) for a charge point with the id `my-chargepoint-id` use the following parameters:
 
 ```
-SSL_CLIENT_KEY_FILE=path/to/key.pem \
-SSL_CLIENT_CERT_FILE=path/to/cert.pem \
-SSL_CERT_FILE=path/to/ca_root.pem \
-DEBUG='ocpp-chargepoint-simulator:simulator:*' \
-nodemon --use-openssl-ca build/src/main.js
+./start.sh --v1 --keyStore '[{"id": "my-chargepoint-id", "key": "private.pem", "cert": "cert.pem"}]' --ca ./ca.pem
 ```
 
 ## server operation - DEV mode
@@ -121,7 +142,7 @@ Run those 2 in parallel:
 
 ```
 npm run build:watch
-DEBUG='ocpp-chargepoint-simulator:*' nodemon build/src/main.js
+./start.sh --v1 --d
 ```
 
 ## OCPP Operations
@@ -132,11 +153,11 @@ The simulator will respond to all `Trigger Message` with `status=NotImplemented`
 registered for this `requestedMessage`.
 
 OCPP 1.6 defines those requestedMessage:
-* "BootNotification",
-* "DiagnosticsStatusNotification",
-* "FirmwareStatusNotification",
-* "Heartbeat",
-* "MeterValues",
+* "BootNotification"
+* "DiagnosticsStatusNotification"
+* "FirmwareStatusNotification"
+* "Heartbeat"
+* "MeterValues"
 * "StatusNotification"
 
 Example for BootNotification
@@ -144,7 +165,7 @@ Example for BootNotification
 ```
 cp.answerTriggerMessage("BootNotification", async (request) => {
     cp.sendResponse(request.uniqueId, {status: "Accepted"});
-    cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
+    await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
 });
 ```
 
@@ -156,13 +177,49 @@ Another example for DiagnosticsStatusNotification
 cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
     if(currentDiagnosticsStatus) {
         cp.sendResponse(request.uniqueId, {status: "Accepted"});
-        cp.sendDiagnosticsStatusNotification({status: currentDiagnosticsStatus});
+        await cp.sendDiagnosticsStatusNotification({status: currentDiagnosticsStatus});
     } else {
         cp.sendResponse(request.uniqueId, {status: "Rejected"});
     }
 });
 ``` 
  
+### ExtendedTriggerMessage
+
+OCPP 1.6 security defines those requestedMessage:
+* "BootNotification"
+* "LogStatusNotification"
+* "FirmwareStatusNotification"
+* "Heartbeat"
+* "MeterValues"
+* "SignChargePointCertificate"
+* "StatusNotification"
+
+Example of SignChargePointCertificate:
+
+```
+let tmpKey;
+cp.answerExtendedTriggerMessage("SignChargePointCertificate", async (request) => {
+    cp.sendResponse(request.uniqueId, {status: "Accepted"});
+    const {key, csr} = await cp.generateCsr('/OU=Ocpp-Simulator/O=Ocpp Simu Inc./L=Paradise City/ST=The State/C=US/CN=the-best-chargepoint');
+    tmpKey = key;
+    await cp.sendSignCertificate({csr, "typeOfCertificate": "ChargingStationCertificate"});
+});
+cp.answerCertificateSigned( async (request) => {
+    if(!tmpKey) {
+        cp.sendResponse(request.uniqueId, {status: "Rejected"});
+        return;
+    }
+    cp.sendResponse(request.uniqueId, {status: "Accepted"});
+    const keystore = cp.keystore();
+    // this will overwrite the current key/cert files
+    const filenames = keystore.save(false, tmpKey, request.payload.cert.join('\n'));
+    // alternatively certs/key can be written in a new file
+    // keystore.save('-' + new Date().toISOString(), tmpKey, request.payload.cert.join('\n'));
+    await cp.reConnect();
+    await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});
+}, cp.CERTIFICATE_SIGNED_OPTIONS_PEM_ENCODER());
+```
 
 ### Supported
 
@@ -183,6 +240,9 @@ cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
 * Change Configuration
 * Change Availability
 * Remote Start Transaction
+* ExtendedTriggerMessage (1.6 security)
+* SignCertificate (1.6 security)
+* CertificateSigned (1.6 security)
 
 ### Not supported (yet)
 

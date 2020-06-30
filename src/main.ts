@@ -4,8 +4,16 @@ import * as fs from 'fs';
 import * as _eval from 'eval';
 import {chargepointFactory} from './chargepoint';
 import http from './http/http';
+import {logger} from "./http-post-logger";
 
 const debug = Debug('ocpp-chargepoint-simulator:main');
+
+logger.log("ChargepointOcpp16Json:main", null, 'app started');
+
+process.on('uncaughtException', function (err) {
+  console.error((err && err.stack) ? err.stack : err);
+  logger.log("ChargepointOcpp16Json:main", null, err);
+});
 
 function normalizeHost(val = 'localhost'): string {
   return val;
@@ -41,11 +49,14 @@ if (process.argv[2]) {
 
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   (async () => {
-    try {      
+    try {
       const evalResp = _eval(javaScript, 'execute', {}, true);
       await evalResp(chargepointFactory);
     } catch (e) {
       debug(e);
+      if (!debug.enabled) {
+        console.error(e);
+      }
     }
   })();
 

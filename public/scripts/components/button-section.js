@@ -4,17 +4,17 @@ define(function (require) {
   let template = `
     <nav class="panel">
       <p class="panel-heading">
-      Command Helper
+      Command Helper (<button v-on:click="openDocs" class="button is-small is-rounded">Docs</button>)
     </p>
     <div class="panel-block">
-      <button v-on:click="startup" class="button">Startup</button> &nbsp;
-      <button v-on:click="bootnotification" class="button">Bootnotification</button> &nbsp;
-      <button v-on:click="heartbeat" class="button">heartbeat</button> &nbsp;
-      <button v-on:click="statusNotification" class="button">statusNotification</button> &nbsp;
-      <button v-on:click="authorize" class="button">authorize</button> &nbsp;
-      <button v-on:click="startTransaction" class="button">startTransaction</button> &nbsp;
-      <button v-on:click="meterValues" class="button">meterValues</button> &nbsp;
-      <button v-on:click="stopTransaction" class="button">stopTransaction</button> &nbsp;
+      <button v-on:click="startup" class="button is-primary">Startup</button> &nbsp;
+      <button v-on:click="bootnotification" class="button is-link">Bootnotification</button> &nbsp;
+      <button v-on:click="heartbeat" class="button is-link">heartbeat</button> &nbsp;
+      <button v-on:click="statusNotification" class="button is-link">statusNotification</button> &nbsp;
+      <button v-on:click="authorize" class="button is-info">authorize</button> &nbsp;
+      <button v-on:click="startTransaction" class="button is-info">startTransaction</button> &nbsp;
+      <button v-on:click="meterValues" class="button is-info">meterValues</button> &nbsp;
+      <button v-on:click="stopTransaction" class="button is-info">stopTransaction</button> &nbsp;
       </div>
     </nav>
 `;
@@ -45,6 +45,9 @@ define(function (require) {
       },
       stopTransaction: function() {
         this.$store.commit('stopTransaction');
+      },
+      openDocs: function () {
+        window.open('docs', '_blank');
       }
     }
   });
