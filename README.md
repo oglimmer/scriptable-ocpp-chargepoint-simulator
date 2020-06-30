@@ -182,6 +182,7 @@ cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
 * Get Configuration
 * Change Configuration
 * Change Availability
+* Remote Start Transaction
 
 ### Not supported (yet)
 
@@ -191,7 +192,6 @@ cp.answerTriggerMessage("DiagnosticsStatusNotification", async (request) => {
 * Data Transfer
 * Get Composite Schedule
 * Get Local List Version
-* Remote Start Transaction
 * Remote Stop Transaction
 * Reserve Now
 * Send Local List
