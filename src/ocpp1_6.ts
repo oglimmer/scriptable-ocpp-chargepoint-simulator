@@ -205,3 +205,38 @@ export interface CertificateSignedPayload {
 export interface CertificateSignedResponse {
   status: string // "Accepted","Rejected"
 }
+
+export interface ChargingSchedulePeriod {
+  startPeriod: number,
+  limit: number,
+  numberPhases?: number
+}
+
+export interface ChargingSchedule {
+  duration?: number,
+  startSchedule?: string,
+  chargingRateUnit: string,
+  chargingSchedulePeriod: Array<ChargingSchedulePeriod>
+}
+
+export interface ChargingProfile {
+  chargingProfileId: number,
+  transactionId?: number,
+  stackLevel: number,
+  chargingProfilePurpose: string,
+  chargingProfileKind: string,
+  recurrencyKind?: string,
+  validFrom?: string,
+  validTo?: string,
+  chargingSchedule: ChargingSchedule
+}
+
+export interface RemoteStartTransactionPayload {
+  connectorId?: number,
+  idTag: string,
+  chargingProfile?: ChargingProfile
+}
+
+export interface RemoteStartTransactionResponse {
+  status: string
+}

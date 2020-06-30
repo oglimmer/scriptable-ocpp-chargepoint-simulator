@@ -86,7 +86,32 @@ define(function (require) {
           '});\n' +
           'cp.answerChangeAvailability( async (request) => {\n' +
           '    cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
-          '});\n';
+          '});\n'
+          + 'cp.answerRemoteStartTransaction( async (request) => {\n'
+          + '    await cp.sendResponse(request.uniqueId, {status: "Accepted"});\n'
+          + '\n'
+          + '    await cp.sendAuthorize({ idTag: request.payload[\'idTag\'] });\n'
+          + '    await cp.sendStatusNotification({ connectorId: 1, errorCode: \'NoError\', status: \'Preparing\' });\n'
+          + '\n'
+          + '    cp.transaction = await cp.startTransaction({\n'
+          + '      connectorId: 1,\n'
+          + '      idTag: request.payload[\'idTag\'],\n'
+          + '      meterStart: 1377,\n'
+          + '      timestamp: \'2020-06-30T12:26:57.167Z\',\n'
+          + '    });\n'
+          + '\n'
+          + '    await cp.sendStatusNotification({ connectorId: 1, errorCode: \'NoError\', status: \'Charging\' });\n'
+          + '\n'
+          + '    await cp.meterValues({\n'
+          + '      connectorId: 1,\n'
+          + '      transactionId: cp.transaction.transactionId,\n'
+          + '      meterValue: [{\n'
+          + '        timestamp: \'2020-06-30T12:27:03.198Z\',\n'
+          + '        sampledValue: [{ value: \'1387\' }],\n'
+          + '      }],\n'
+          + '    });\n'
+          + '\n'
+          + '});\n';
         state.inputText = text;
       },
       bootnotification(state) {

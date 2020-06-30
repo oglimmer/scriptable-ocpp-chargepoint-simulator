@@ -23,13 +23,13 @@ import {
   OcppResponse,
   Payload,
   ResetPayload, 
-  SampledValue,
   SignCertificatePayload,
   StartTransactionPayload,
   StartTransactionResponse,
   StatusNotificationPayload,
   StopTransactionPayload,
-  StopTransactionResponse, TransactionData,
+  StopTransactionResponse, 
+  RemoteStartTransactionPayload,
   TriggerMessagePayload,
   UpdateFirmwarePayload
 } from './ocpp1_6';
@@ -146,9 +146,7 @@ export class ChargepointOcpp16Json {
   /** holds a callback for onClose, may be null */
   onCloseCb: () => void;
 
-  public transaction: StartTransactionResponse;
-
-  constructor(readonly id: number) {
+  constructor() {
     this.buildTriggerMessage();
     this.buildExtendedTriggerMessage();
   }
@@ -395,31 +393,9 @@ export class ChargepointOcpp16Json {
     this.registeredCallbacks.set("CertificateSigned", {cb, options});
   }
 
-  answerRemoteStartTransaction<T>(cb: (request: OcppRequest<ChangeAvailabilityPayload>) => void): void {
+  answerRemoteStartTransaction<T>(cb: (request: OcppRequest<RemoteStartTransactionPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerRemoteStartTransaction');
-    this.registeredCallbacks.set('RemoteStartTransaction', async (request: OcppRequest<ChangeAvailabilityPayload>) => {
-      await cb(request);
-
-      await this.sendAuthorize({ idTag: request.payload['idTag'] });
-      await this.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Preparing' });
-
-      this.transaction = await this.startTransaction({
-        connectorId: 1,
-        idTag: request.payload['idTag'],
-        meterStart: 1377,
-        timestamp: '2020-06-30T12:26:57.167Z',
-      } as StartTransactionPayload);
-      await this.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Charging' });
-
-      await this.meterValues({
-        connectorId: 1,
-        transactionId: this.transaction.transactionId,
-        meterValue: [{
-          timestamp: '2020-06-30T12:27:03.198Z',
-          sampledValue: [{ value: '1387' } as SampledValue],
-        } as TransactionData],
-      } as MeterValuesPayload);
-    });
+    this.registeredCallbacks.set("RemoteStartTransaction", {cb, options});    
   }
 
   /**
@@ -738,7 +714,7 @@ export class ChargepointOcpp16Json {
       debug(`Listening on ${JSON.stringify(addr)}`);
     });
     const httpTerminator = createHttpTerminator({server})
-    expressInit['terminate'] = () => httpTerminator.terminate();
+    expressInit['terminate'] = (): void => httpTerminator.terminate();
     if (users) {
       expressInit.use(expressBasicAuth({users}));
     }
