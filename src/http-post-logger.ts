@@ -1,18 +1,9 @@
 import * as https from 'https';
-import * as httpPostLoggerConfig from './http-post-loggers-config';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import {httpPostLoggerConfig} from './http-post-logger-config';
 import Debug from 'debug';
 
-interface Config {
-  enabled: boolean,
-  batchSize: number,
-  options: object
-}
-
 const debug = Debug('ocpp-chargepoint-simulator:simulator:HttpPostLogger');
-const logConfig = httpPostLoggerConfig(fs, path, os) as Config;
+const logConfig = httpPostLoggerConfig();
 debug(`Remote logging is ${logConfig.enabled}`);
 
 class HttpPostLogger {

@@ -17,21 +17,33 @@
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-jest": "^23.17.1",
     "jest": "^25.5.4",
+    "nodemon": "^2.0.4",
     "prettier": "^2.0.5",
     "rimraf": "^3.0.2",
     "ts-jest": "^25.5.1",
+    "ts-node": "^8.10.2",
     "tsutils": "^3.17.0",
     "typedoc": "^0.17.8",
     "typescript": "^3.9.5"
   },
   "scripts": {
-    "clean": "rimraf coverage build tmp",
-    "build": "tsc -p tsconfig.release.json",
-    "build:watch": "tsc -w -p tsconfig.release.json",
+    "dev": "nodemon",
+    "start": "ts-node --project ./tsconfig.release.json ./src/main.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
-    "docs": "npx typedoc --out public/docs --inputFiles src/ --exclude 'src/main.ts' --exclude 'src/websocket-connection-centralsystem.ts' --exclude 'src/ftp.ts' --exclude 'src/http/*' --exclude 'src/remote-console-connection.ts' --exclude 'src/state-service.ts'"
+    "docs": "npx typedoc --out public/docs --inputFiles src/ --exclude 'src/main.ts' --exclude 'src/websocket-connection-centralsystem.ts' --exclude 'src/ftp.ts' --exclude 'src/http/*' --exclude 'src/remote-console-connection.ts' --exclude 'src/state-service.ts' --exclude 'src/http-post-logger-config.ts' --exclude 'src/http-post-logger.ts'"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      ".git",
+      "node_modules"
+    ],
+    "watch": [
+      "src"
+    ],
+    "exec": "npm start",
+    "ext": "ts"
   },
   "author": "Oli Zimpasser <oglimmer@gmail.com>",
   "license": "Apache-2.0",

@@ -13,7 +13,7 @@ const debug = Debug('ocpp-chargepoint-simulator:express:init');
 const expressInit = express();
 
 // view engine setup
-expressInit.set('views', path.join(__dirname, '../../..', 'views'));
+expressInit.set('views', path.join(__dirname, '../..', 'views'));
 expressInit.set('view engine', 'ejs');
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -22,7 +22,7 @@ expressInit.use(express.json());
 expressInit.use(express.urlencoded({extended: false}));
 expressInit.use(express.raw({type: "application/javascript"}));
 expressInit.use(cookieParser());
-expressInit.use(express.static(path.join(__dirname, '../../..', 'public')));
+expressInit.use(express.static(path.join(__dirname, '../..', 'public')));
 
 expressInit.use('/', htmlRouter);
 expressInit.use('/cp', cpRouter);

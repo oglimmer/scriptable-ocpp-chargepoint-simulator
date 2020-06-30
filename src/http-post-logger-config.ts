@@ -1,5 +1,5 @@
-// fs is like: const fs = require('fs');
-module.exports = (fs, path, os) => ({
+
+export const httpPostLoggerConfig = () => ({
   enabled: false,
   batchSize: 100,
   options: {
