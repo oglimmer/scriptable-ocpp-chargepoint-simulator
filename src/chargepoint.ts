@@ -22,16 +22,17 @@ import {
   OcppRequest,
   OcppResponse,
   Payload,
-  ResetPayload,
+  ResetPayload, 
+  SampledValue,
   SignCertificatePayload,
   StartTransactionPayload,
   StartTransactionResponse,
   StatusNotificationPayload,
   StopTransactionPayload,
-  StopTransactionResponse,
+  StopTransactionResponse, TransactionData,
   TriggerMessagePayload,
   UpdateFirmwarePayload
-} from "./ocpp1_6";
+} from './ocpp1_6';
 import {CertManagement, Csr} from "./cert-management";
 import {KeyStore} from "./keystore";
 import {logger} from './http-post-logger';
@@ -40,6 +41,7 @@ import * as express from "express";
 import {IRouter} from "express";
 import {createHttpTerminator} from 'http-terminator';
 import * as expressBasicAuth from "express-basic-auth";
+
 
 /**
  * Logger defintion
@@ -144,7 +146,9 @@ export class ChargepointOcpp16Json {
   /** holds a callback for onClose, may be null */
   onCloseCb: () => void;
 
-  constructor() {
+  public transaction: StartTransactionResponse;
+
+  constructor(readonly id: number) {
     this.buildTriggerMessage();
     this.buildExtendedTriggerMessage();
   }
@@ -389,6 +393,33 @@ export class ChargepointOcpp16Json {
   answerCertificateSigned<T>(cb: (request: OcppRequest<CertificateSignedPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerCertificateSigned');
     this.registeredCallbacks.set("CertificateSigned", {cb, options});
+  }
+
+  answerRemoteStartTransaction<T>(cb: (request: OcppRequest<ChangeAvailabilityPayload>) => void): void {
+    debug('answerRemoteStartTransaction');
+    this.registeredCallbacks.set('RemoteStartTransaction', async (request: OcppRequest<ChangeAvailabilityPayload>) => {
+      await cb(request);
+
+      await this.sendAuthorize({ idTag: request.payload['idTag'] });
+      await this.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Preparing' });
+
+      this.transaction = await this.startTransaction({
+        connectorId: 1,
+        idTag: request.payload['idTag'],
+        meterStart: 1377,
+        timestamp: '2020-06-30T12:26:57.167Z',
+      } as StartTransactionPayload);
+      await this.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Charging' });
+
+      await this.meterValues({
+        connectorId: 1,
+        transactionId: this.transaction.transactionId,
+        meterValue: [{
+          timestamp: '2020-06-30T12:27:03.198Z',
+          sampledValue: [{ value: '1387' } as SampledValue],
+        } as TransactionData],
+      } as MeterValuesPayload);
+    });
   }
 
   /**

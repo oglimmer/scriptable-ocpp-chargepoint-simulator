@@ -66,6 +66,9 @@ define(function (require) {
           'cp.answerGetConfiguration( async (request) => {\n' +
           '    cp.sendResponse(request.uniqueId, {configurationKey: configurationStore});\n' +
           '});\n' +
+          'cp.answerRemoteStartTransaction( async (request) => {\n' +
+          '    cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
+          '});\n' +
           'cp.answerChangeConfiguration( async (request) => {\n' +
           '    const element = configurationStore.find(e => e.key == request.payload.key);\n' +
           '    if(!element) {\n' +

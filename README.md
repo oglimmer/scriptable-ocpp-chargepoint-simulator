@@ -239,6 +239,7 @@ cp.answerCertificateSigned( async (request) => {
 * Get Configuration
 * Change Configuration
 * Change Availability
+* Remote Start Transaction
 * ExtendedTriggerMessage (1.6 security)
 * SignCertificate (1.6 security)
 * CertificateSigned (1.6 security)
@@ -251,7 +252,6 @@ cp.answerCertificateSigned( async (request) => {
 * Data Transfer
 * Get Composite Schedule
 * Get Local List Version
-* Remote Start Transaction
 * Remote Stop Transaction
 * Reserve Now
 * Send Local List
