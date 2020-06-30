@@ -1,20 +1,21 @@
 import * as https from 'https';
 import * as httpPostLoggerConfig from './http-post-loggers-config';
 import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import Debug from 'debug';
 
 interface Config {
   enabled: boolean,
+  batchSize: number,
   options: object
 }
 
 const debug = Debug('ocpp-chargepoint-simulator:simulator:HttpPostLogger');
-const logConfig = httpPostLoggerConfig(fs) as Config;
+const logConfig = httpPostLoggerConfig(fs, path, os) as Config;
 debug(`Remote logging is ${logConfig.enabled}`);
 
 class HttpPostLogger {
-
-  private readonly BATCH_SIZE = 10;
 
   private collectedLogs: Array<string> = [];
 
@@ -23,7 +24,7 @@ class HttpPostLogger {
       return;
     }
     this.collectedLogs.push(this.formatLog(loggerName, cpName, log));
-    if (this.collectedLogs.length >= this.BATCH_SIZE) {
+    if (this.collectedLogs.length >= logConfig.batchSize) {
       this.sendLogs();
       this.collectedLogs = [];
     }

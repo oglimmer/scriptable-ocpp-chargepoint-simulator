@@ -1,6 +1,7 @@
 // fs is like: const fs = require('fs');
-module.exports = fs => ({
+module.exports = (fs, path, os) => ({
   enabled: false,
+  batchSize: 100,
   options: {
     hostname: '...',
     port: 443,
