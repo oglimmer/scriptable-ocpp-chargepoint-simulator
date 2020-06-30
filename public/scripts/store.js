@@ -6,7 +6,7 @@ define(function (require) {
   Vue.use(Vuex);
 
   const baseUrl = 'ws://localhost:8100/cpoc/PAG';
-  
+
   return new Vuex.Store({
     state: {
       inputText: '',
@@ -65,6 +65,9 @@ define(function (require) {
           'configurationStore.push({key: "barfoo.1", readonly: false, value: "100"});\n' +
           'cp.answerGetConfiguration( async (request) => {\n' +
           '    cp.sendResponse(request.uniqueId, {configurationKey: configurationStore});\n' +
+          '});\n' +
+          'cp.answerRemoteStartTransaction( async (request) => {\n' +
+          '    cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
           '});\n' +
           'cp.answerChangeConfiguration( async (request) => {\n' +
           '    const element = configurationStore.find(e => e.key == request.payload.key);\n' +
