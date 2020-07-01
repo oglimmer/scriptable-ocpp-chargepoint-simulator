@@ -66,9 +66,6 @@ define(function (require) {
           'cp.answerGetConfiguration( async (request) => {\n' +
           '    cp.sendResponse(request.uniqueId, {configurationKey: configurationStore});\n' +
           '});\n' +
-          'cp.answerRemoteStartTransaction( async (request) => {\n' +
-          '    cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
-          '});\n' +
           'cp.answerChangeConfiguration( async (request) => {\n' +
           '    const element = configurationStore.find(e => e.key == request.payload.key);\n' +
           '    if(!element) {\n' +
@@ -85,7 +82,15 @@ define(function (require) {
           '    }\n' +
           '});\n' +
           'cp.answerChangeAvailability( async (request) => {\n' +
-          '    cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
+          '   cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
+          '   if (request.payload.type.toUpperCase() === "INOPERATIVE") {\n' +
+          '       await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Unavailable"});\n' +
+          '       await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Unavailable"});\n' +
+          '   }\n' +
+          '   else if (request.payload.type.toUpperCase() === "OPERATIVE") {\n' +
+          '       await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
+          '       await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
+          '   }\n' +
           '});\n'
           + 'cp.answerRemoteStartTransaction( async (request) => {\n'
           + '    await cp.sendResponse(request.uniqueId, {status: "Accepted"});\n'
