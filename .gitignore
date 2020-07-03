@@ -18,6 +18,7 @@ build/
 
 # JetBrains IDEs
 .idea/
+*.iml
 
 # Optional npm cache directory
 .npm

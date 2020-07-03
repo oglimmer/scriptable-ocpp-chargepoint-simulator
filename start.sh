@@ -63,6 +63,10 @@ while [[ "${1:-}" =~ ^- ]] ; do
     --v2)
       export DEBUG=*
       ;;
+    --vv)
+      export DEBUG=$2
+      shift
+      ;;
     --s)
       export DEBUG=.
       ;;

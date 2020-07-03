@@ -22,14 +22,14 @@ import {
   OcppRequest,
   OcppResponse,
   Payload,
-  ResetPayload, 
+  RemoteStartTransactionPayload,
+  ResetPayload,
   SignCertificatePayload,
   StartTransactionPayload,
   StartTransactionResponse,
   StatusNotificationPayload,
   StopTransactionPayload,
-  StopTransactionResponse, 
-  RemoteStartTransactionPayload,
+  StopTransactionResponse,
   TriggerMessagePayload,
   UpdateFirmwarePayload
 } from './ocpp1_6';
@@ -157,12 +157,13 @@ export class ChargepointOcpp16Json {
    * @param output string or object send to the log output console
    */
   log(output: (string | object)): void {
+    let wsConRemoteConsoleArr;
     if (this.wsConCentralSystem) {
-      const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
+      wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
       wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_ERROR, output));
-    } else {
-      console.log('Failed to send log to remote-console');
-      console.log(output);
+    }
+    if (!wsConRemoteConsoleArr || wsConRemoteConsoleArr.length === 0) {
+      debug(output);
     }
   }
 
@@ -395,7 +396,7 @@ export class ChargepointOcpp16Json {
 
   answerRemoteStartTransaction<T>(cb: (request: OcppRequest<RemoteStartTransactionPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerRemoteStartTransaction');
-    this.registeredCallbacks.set("RemoteStartTransaction", {cb, options});    
+    this.registeredCallbacks.set("RemoteStartTransaction", {cb, options});
   }
 
   /**

@@ -11,7 +11,7 @@ class HttpPostLogger {
   private collectedLogs: Array<string> = [];
 
   log(loggerName: string, cpName: string, log: string | object): void {
-    if (!logConfig.enabled) {
+    if (!logConfig.enabled && !logConfig.debug) {
       return;
     }
     this.collectedLogs.push(this.formatLog(loggerName, cpName, log));
@@ -21,17 +21,34 @@ class HttpPostLogger {
     }
   }
 
-  private formatLog(loggerName: string, cpName: string, log: string | object): string {
+  // log is actually string | object | Error
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private formatLog(loggerName: string, cpName: string, log: any): string {
+    let message;
+    if(log.stack) {
+      message = log.toString();
+    } else {
+      message = JSON.stringify(log);
+    }
     return JSON.stringify({
       time: new Date().toISOString(),
       loggerName,
       cpName,
-      message: JSON.stringify(log)
+      message
     });
   }
 
   private sendLogs(): void {
-    const req = https.request(logConfig.options, (res) => {
+    if (logConfig.debug) {
+      this.collectedLogs.forEach(e => debug(e));
+    }
+    if (logConfig.enabled) {
+      this.sendLogsToRemote();
+    }
+  }
+
+  private sendLogsToRemote(): void {
+    const req = https.request(logConfig.options, (res): void => {
       if (res.statusCode !== 200) {
         debug(`Failed to sendLogs. http status = ${res.statusCode}, headers: ${JSON.stringify(res.headers)}`);
       }

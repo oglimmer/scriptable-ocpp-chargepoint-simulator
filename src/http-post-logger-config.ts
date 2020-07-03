@@ -1,7 +1,15 @@
 
-export const httpPostLoggerConfig = () => ({
+interface Config {
+  enabled: boolean,
+  batchSize: number,
+  debug: boolean,
+  options: object
+}
+
+export const httpPostLoggerConfig = (): Config => ({
   enabled: false,
-  batchSize: 100,
+  batchSize: 1,
+  debug: false,
   options: {
     hostname: '...',
     port: 443,
