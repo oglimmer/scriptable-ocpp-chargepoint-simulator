@@ -67,7 +67,7 @@ export class WSConCentralSystem{
       })
       this.ws.on('error', (event) => {
         debug(`Backend WS got error: ${event}`);
-        logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS error received. ${this.url}`);
+        logger.log("ChargepointOcpp16Json:WSConCentralSystem", this.cpName, `Backend WS error received. ${this.url}, Error: ${event}`);
         if(!promiseResolved) {
           reject(event);
         } else {
