@@ -41,7 +41,7 @@ if (process.argv[2]) {
     javaScript = fs.readFileSync(path.join(process.cwd(), filename), 'utf-8');
   }
   if (javaScript.indexOf('module.exports') == -1) {
-    javaScript = "module.exports = async function(connect) {\n" +
+    javaScript = "module.exports = async function(connect, logger) {\n" +
     javaScript + "\n" +
     "};"
   }
@@ -51,7 +51,7 @@ if (process.argv[2]) {
   (async () => {
     try {
       const evalResp = _eval(javaScript, 'execute', {}, true);
-      await evalResp(chargepointFactory);
+      await evalResp(chargepointFactory, logger);
     } catch (e) {
       debug(e);
       if (!debug.enabled) {
