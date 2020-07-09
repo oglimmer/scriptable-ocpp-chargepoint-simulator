@@ -18,37 +18,30 @@ export class FtpSupport {
   ftpUploadDummyFile(fileLocation: string, fileName: string): Promise<void> {
     const {user, password, host, remotePath, localPath} = this.extracted(fileLocation, false);
     fs.writeFileSync(localPath + "/" + fileName, "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.");
-    return new Promise((resolve, reject) => {
-      const ftp = new PromiseFtp();
-      ftp.connect({host, user, password})
-        .then(() => ftp.put(localPath + "/" + fileName, remotePath + "/" + fileName))
-        .then(() => {
-          ftp.end(); // if we return this Promise, (at least locally) it will never resolve/reject
-        })
-        .then(() => resolve())
-        .catch((err) => reject(err));
-    });
+    const ftp = new PromiseFtp();
+    return ftp.connect({host, user, password})
+      .then(() => ftp.put(localPath + "/" + fileName, remotePath + "/" + fileName))
+      .then(() => {
+        ftp.end(); // if we return this Promise, (at least locally) it will never resolve/reject
+      });
   }
 
   ftpDownload(fileLocation: string): Promise<string> {
     const {user, password, host, localPath, remotePath, fileName} = this.extracted(fileLocation, true);
-    return new Promise((resolve, reject) => {
-      const ftp = new PromiseFtp();
-      ftp.connect({host, user, password})
-        .then(() => ftp.get(remotePath + "/" + fileName))
-        .then((stream) => {
-          return new Promise((resolve, reject) => {
-            stream.once('close', resolve);
-            stream.once('error', reject);
-            stream.pipe(fs.createWriteStream(localPath + "/" + fileName));
-          });
-        })
-        .then(() => {
-          ftp.end();
-        })
-        .then(() => resolve(localPath + "/" + fileName))
-        .catch((err) => reject(err));
-    });
+    const ftp = new PromiseFtp();
+    return ftp.connect({host, user, password})
+      .then(() => ftp.get(remotePath + "/" + fileName))
+      .then((stream) => {
+        return new Promise((resolve, reject) => {
+          stream.once('close', resolve);
+          stream.once('error', reject);
+          stream.pipe(fs.createWriteStream(localPath + "/" + fileName));
+        });
+      })
+      .then(() => {
+        ftp.end();
+      })
+      .then(() => localPath + "/" + fileName);
   }
 
   private extracted(fileLocation: string, withFilename: boolean): FtpParameters {

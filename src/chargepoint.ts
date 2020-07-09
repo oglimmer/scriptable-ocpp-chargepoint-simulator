@@ -155,8 +155,9 @@ export class ChargepointOcpp16Json {
    * Outputs a string or object to the log console.
    *
    * @param output string or object send to the log output console
+   * @return true if log was successfully sent to remote-console, false if logged locally
    */
-  log(output: (string | object)): void {
+  log(output: (string | object)): boolean {
     let wsConRemoteConsoleArr;
     if (this.wsConCentralSystem) {
       wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
@@ -164,6 +165,9 @@ export class ChargepointOcpp16Json {
     }
     if (!wsConRemoteConsoleArr || wsConRemoteConsoleArr.length === 0) {
       debug(output);
+      return false;
+    } else {
+      return true;
     }
   }
 
@@ -543,7 +547,14 @@ export class ChargepointOcpp16Json {
           if (ocppRequestWithOptions.options && ocppRequestWithOptions.options.requestConverter) {
             wrappedRequest = await ocppRequestWithOptions.options.requestConverter(ocppRequest);
           }
-          ocppRequestWithOptions.cb(wrappedRequest);
+          try {
+            await ocppRequestWithOptions.cb(wrappedRequest);
+          } catch (err) {
+            if (this.log(err)) { // log to remote-console
+              debug(err); // log into local console via Debug-package
+            }
+            logger.log("ChargepointOcpp16Json:onMessage", this.wsConCentralSystem.cpName, err); // send to remote-logger
+          }
         }
       });
     }
