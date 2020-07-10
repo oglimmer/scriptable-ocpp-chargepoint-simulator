@@ -411,6 +411,18 @@ export class ChargepointOcpp16Json {
   }
 
   /**
+   * Registers a function to implement logic for stop a remote transaction. The function provided must at least call
+   * cp.sendResponse(request.uniqueID, {...}); to send the OCPP CALLRESULT message.
+   *
+   * @param cb cb callback with signature (request: OcppRequest<CertificateSignedPayload>) => void
+   * @param options
+   */
+  answerRemoteStopTransaction<T>(cb: (request: OcppRequest<RemoteStartTransactionPayload>) => void, options?: AnswerOptions<T>): void {
+    debug('answerRemoteStopTransaction');
+    this.registeredCallbacks.set("RemoteStopTransaction", {cb, options});
+  }
+
+  /**
    * Registers a function to implement logic for OCPP's Trigger Message message. The function provided must at least call
    * cp.sendResponse(request.uniqueId, {...}); to send the a OCPP CALLRESULT message.
    *
