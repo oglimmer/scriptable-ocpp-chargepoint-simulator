@@ -1,4 +1,4 @@
-define(function (require) {
+define(function(require) {
   let Vue = require('libs/vue');
   let Vuex = require('libs/vuex');
   let axios = require('libs/axios');
@@ -16,7 +16,7 @@ define(function (require) {
       cpName: '',
       ocppMessages: [],
       hideHeartbeats: false,
-      commandInProgress: false
+      commandInProgress: false,
     },
     mutations: {
       updateInputText(state, value) {
@@ -24,7 +24,7 @@ define(function (require) {
       },
       startup(state) {
         let text = '';
-        if(state.wsStatus.startsWith('closed')) {
+        if (state.wsStatus.startsWith('closed')) {
           text += `cp = await connect('${state.connectTemplate}/${state.cpName}');\n`;
         }
         text += 'const bootResp = await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
@@ -91,30 +91,33 @@ define(function (require) {
           '       await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
           '       await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
           '   }\n' +
-          '});\n'
-          + 'cp.answerRemoteStartTransaction( async (request) => {\n'
-          + '    await cp.sendResponse(request.uniqueId, {status: "Accepted"});\n'
-          + '    await cp.sendAuthorize({ idTag: request.payload[\'idTag\'] });\n'
-          + '    await cp.sendStatusNotification({ connectorId: 1, errorCode: \'NoError\', status: \'Preparing\' });\n'
-          + '    cp.transaction = await cp.startTransaction({\n'
-          + '      connectorId: 1,\n'
-          + '      idTag: request.payload[\'idTag\'],\n'
-          + '      meterStart: 1377,\n'
-          + '      timestamp: \'2020-06-30T12:26:57.167Z\',\n'
-          + '    });\n'
-          + '    await cp.sendStatusNotification({ connectorId: 1, errorCode: \'NoError\', status: \'Charging\' });\n'
-          + '    await cp.meterValues({\n'
-          + '      connectorId: 1,\n'
-          + '      transactionId: cp.transaction.transactionId,\n'
-          + '      meterValue: [{\n'
-          + '        timestamp: \'2020-06-30T12:27:03.198Z\',\n'
-          + '        sampledValue: [{ value: \'1387\' }],\n'
-          + '      }],\n'
-          + '    });\n'
-          + '    await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "' + new Date().toISOString() + '"});\n'
-          + '    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});\n'
-          + '    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n'
-          + '});\n';
+          '});\n' +
+          'cp.answerRemoteStartTransaction( async (request) => {\n' +
+          '    await cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
+          '    await cp.sendAuthorize({ idTag: request.payload[\'idTag\'] });\n' +
+          '    await cp.sendStatusNotification({ connectorId: 1, errorCode: \'NoError\', status: \'Preparing\' });\n' +
+          '    cp.transaction = await cp.startTransaction({\n' +
+          '      connectorId: 1,\n' +
+          '      idTag: request.payload[\'idTag\'],\n' +
+          '      meterStart: 1377,\n' +
+          '      timestamp: \'2020-06-30T12:26:57.167Z\',\n' +
+          '    });\n' +
+          '    await cp.sendStatusNotification({ connectorId: 1, errorCode: \'NoError\', status: \'Charging\' });\n' +
+          '    await cp.meterValues({\n' +
+          '      connectorId: 1,\n' +
+          '      transactionId: cp.transaction.transactionId,\n' +
+          '      meterValue: [{\n' +
+          '        timestamp: \'2020-06-30T12:27:03.198Z\',\n' +
+          '        sampledValue: [{ value: \'1387\' }],\n' +
+          '      }],\n' +
+          '    });\n' +
+          '});\n' +
+          'cp.answerRemoteStopTransaction( async (request) => {\n' +
+          '    await cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
+          '    await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "' + new Date().toISOString() + '"});\n' +
+          '    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});\n' +
+          '    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
+          '});\n';
         state.inputText = text;
       },
       bootnotification(state) {
@@ -145,7 +148,7 @@ define(function (require) {
       },
       updateWsStatus(state, value) {
         if (state.wsStatusLastId <= value.id) {
-          if(state.wsStatus === '' && value.description.startsWith('closed')) {
+          if (state.wsStatus === '' && value.description.startsWith('closed')) {
             state.inputText = `cp = await connect('${state.connectTemplate}/${state.cpName}');\n`;
           }
           state.wsStatus = value.description;
@@ -160,7 +163,7 @@ define(function (require) {
         state.connectTemplate = value.connectTemplate ? value.connectTemplate : baseUrl;
       },
       ocppMessages(state, value) {
-        const {messageTypeId, uniqueId, action} = value;
+        const { messageTypeId, uniqueId, action } = value;
         const index = state.ocppMessages.findIndex(e => e.uniqueId == uniqueId);
         let element;
         if (index === -1) {
@@ -168,7 +171,7 @@ define(function (require) {
             uniqueId,
             action,
             request: 'undefined',
-            answer: 'undefined'
+            answer: 'undefined',
           };
           state.ocppMessages.splice(0, 0, element);
         } else {
@@ -196,13 +199,13 @@ define(function (require) {
       },
       commandInProgress(state, value) {
         state.commandInProgress = value;
-      }
+      },
     },
     actions: {
       async sendToServer(context) {
         try {
           context.commit('commandInProgress', true);
-          await axios.post(`/cp/${context.state.cpName}`, context.state.inputText, {headers: {'content-type': 'application/javascript'}});
+          await axios.post(`/cp/${context.state.cpName}`, context.state.inputText, { headers: { 'content-type': 'application/javascript' } });
           context.commit('updateInputText', '');
           context.commit('commandInProgress', false);
         } catch (err) {
@@ -210,7 +213,7 @@ define(function (require) {
           context.commit('updateWsError', err);
           context.commit('commandInProgress', false);
         }
-      }
-    }
+      },
+    },
   });
 });
