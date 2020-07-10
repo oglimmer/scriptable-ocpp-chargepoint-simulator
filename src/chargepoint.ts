@@ -398,6 +398,13 @@ export class ChargepointOcpp16Json {
     this.registeredCallbacks.set("CertificateSigned", {cb, options});
   }
 
+  /**
+   * Registers a function to implement logic for start a remote transaction. The function provided must at least call
+   * cp.sendResponse(request.uniqueID, {...}); to send the OCPP CALLRESULT message.
+   *
+   * @param cb cb callback with signature (request: OcppRequest<CertificateSignedPayload>) => void
+   * @param options
+   */
   answerRemoteStartTransaction<T>(cb: (request: OcppRequest<RemoteStartTransactionPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerRemoteStartTransaction');
     this.registeredCallbacks.set("RemoteStartTransaction", {cb, options});
