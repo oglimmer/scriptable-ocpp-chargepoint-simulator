@@ -628,6 +628,7 @@ export class ChargepointOcpp16Json {
     const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
     wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, response))
     this.wsConCentralSystem.send(JSON.stringify(ocppResToArray(response)));
+    logger.log("ChargepointOcpp16Json:sendResponse", this.wsConCentralSystem.cpName, response);
   }
 
   /**
