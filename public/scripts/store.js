@@ -7,6 +7,24 @@ define(function (require) {
 
   const baseUrl = 'ws://localhost:8100/cpoc/PAG';
 
+  function mapInitiator(action) {
+    switch (action) {
+      case "Heartbeat":
+      case "BootNotification":
+      case "StatusNotification":
+      case "StartTransaction":
+      case "MeterValues":
+      case "StopTransaction":
+      case "Authorize":
+      case "DiagnosticsStatusNotification":
+      case "FirmwareStatusNotification":
+      case "SignCertificate":
+        return "CP";
+      default:
+        return "CS";
+    }
+  }
+
   return new Vuex.Store({
     state: {
       inputText: '',
@@ -163,8 +181,10 @@ define(function (require) {
         const {messageTypeId, uniqueId, action} = value;
         const index = state.ocppMessages.findIndex(e => e.uniqueId == uniqueId);
         let element;
+        const initiator = mapInitiator(action);
         if (index === -1) {
           element = {
+            initiator,
             uniqueId,
             action,
             request: 'undefined',

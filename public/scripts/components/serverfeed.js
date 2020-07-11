@@ -13,6 +13,7 @@ define(function (require) {
           )
       </p>
       <div class="panel-block" v-for="msg in ocppMessages">
+            <span class="tag is-foo">{{ msg.initiator }}</span> &nbsp;
             <span class="tag is-danger">{{ msg.action }}</span> &nbsp;
             <span class="tag is-success">{{ msg.request.payload }}</span> &nbsp;
             <span class="tag is-info">{{ msg.answer.payload }}</span>
