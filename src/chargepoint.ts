@@ -522,7 +522,6 @@ export class ChargepointOcpp16Json {
    */
   onMessage(ocppMessage: Array<number|string|object>): void {
     debug(`received: ${JSON.stringify(ocppMessage)}`);
-    logger.log("ChargepointOcpp16Json:onMessage", this.wsConCentralSystem.cpName, ocppMessage);
     const messageTypeId = ocppMessage[0] as number;
     const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
     if (messageTypeId === MessageType.CALLRESULT || messageTypeId === MessageType.CALLERROR) {
@@ -531,6 +530,7 @@ export class ChargepointOcpp16Json {
         uniqueId: ocppMessage[1] as string,
         payload: ocppMessage[2] as object
       }
+      logger.log("ChargepointOcpp16Json:onMessage:response", this.wsConCentralSystem.cpName, ocppResponse);
       wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, ocppResponse))
       this.triggerRequestResult(ocppResponse);
     } else {
@@ -540,6 +540,7 @@ export class ChargepointOcpp16Json {
         action: ocppMessage[2],
         payload: ocppMessage[3]
       } as OcppRequest<Payload>;
+      logger.log("ChargepointOcpp16Json:onMessage:request", this.wsConCentralSystem.cpName, ocppRequest);
       wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, ocppRequest))
       this.registeredCallbacks.forEach(async (ocppRequestWithOptions, action) => {
         if (action === ocppRequest.action) {
@@ -571,8 +572,7 @@ export class ChargepointOcpp16Json {
       this.deferredMessageQueue.unshift(data);
     } else {
       this.isCurrentlyRequestNotAnswered = true;
-      this.wsConCentralSystem.send(JSON.stringify(data));
-      logger.log("ChargepointOcpp16Json:trySendMessageOrDeferr", this.wsConCentralSystem.cpName, data);
+      this.sendData(data);
     }
   }
 
@@ -584,9 +584,23 @@ export class ChargepointOcpp16Json {
     if (this.isCurrentlyRequestNotAnswered === true) {
       debug(`processDeferredMessages, queueSize=${this.deferredMessageQueue.length}`);
       const data = this.deferredMessageQueue.pop();
-      this.wsConCentralSystem.send(JSON.stringify(data));
-      logger.log("ChargepointOcpp16Json:trySendMessageOrDeferr", this.wsConCentralSystem.cpName, data);
+      this.sendData(data);
     }
+  }
+
+  /**
+   * Send the data to the underlaying websocket connection to the central system.
+   *
+   * @param data OcppRequest array
+   */
+  private sendData(data: Array<number | string | object>): void {
+    this.wsConCentralSystem.send(JSON.stringify(data));
+    logger.log("ChargepointOcpp16Json:sendData", this.wsConCentralSystem.cpName, {
+      messageTypeId: data[0],
+      uniqueId: data[1],
+      action: data[2],
+      payload: data[3]
+    });
   }
 
   /**
