@@ -2,6 +2,7 @@ define(function(require) {
   let Vue = require('libs/vue');
   let Vuex = require('libs/vuex');
   let axios = require('libs/axios');
+  let defaultSetup = require('./default-setup');
 
   Vue.use(Vuex);
 
@@ -45,97 +46,7 @@ define(function(require) {
         if (state.wsStatus.startsWith('closed')) {
           text += `cp = await connect('${state.connectTemplate}/${state.cpName}');\n`;
         }
-        text += 'const bootResp = await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
-          'await cp.sendHeartbeat();\n' +
-          'const heartbeatInterval = setInterval(() => cp.sendHeartbeat(), bootResp.interval * 1000); cp.onClose(() => clearInterval(heartbeatInterval));\n' +
-          'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
-          'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
-          'cp.answerGetDiagnostics( async (request) => {\n' +
-          '    const fileName = "foo." + new Date().toISOString() + ".txt";\n' +
-          '    cp.sendResponse(request.uniqueId, {fileName});\n' +
-          '    await cp.sendDiagnosticsStatusNotification({status: "Idle"});\n' +
-          '    await cp.sleep(5000);\n' +
-          '    await cp.sendDiagnosticsStatusNotification({status: "Uploading"});\n' +
-          '    await cp.ftpUploadDummyFile(request.payload.location, fileName);\n' +
-          '    await cp.sendDiagnosticsStatusNotification({status: "Uploaded"});\n' +
-          '});\n' +
-          'cp.answerUpdateFirmware( async (request) => {\n' +
-          '    cp.sendResponse(request.uniqueId, {});\n' +
-          '    await cp.sendFirmwareStatusNotification({status: "Idle"});\n' +
-          '    await cp.sleep(5000);\n' +
-          '    await cp.sendFirmwareStatusNotification({status: "Downloading"});\n' +
-          '    const file = await cp.ftpDownload(request.payload.location);\n' +
-          '    cp.log("file downloaded to: " + file);\n' +
-          '    await cp.sendFirmwareStatusNotification({status: "Downloaded"});\n' +
-          '    await cp.sleep(5000);\n' +
-          '    await cp.sendFirmwareStatusNotification({status: "Installing"});\n' +
-          '    await cp.sleep(5000);\n' +
-          '    await cp.sendFirmwareStatusNotification({status: "Installed"});\n' +
-          '});\n' +
-          'cp.answerReset(async (request) => {\n' +
-          '    cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
-          '    cp.log("RESET ***boing-boing-boing*** " + request.payload.type);\n' +
-          '    await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n' +
-          '});\n' +
-          'const configurationStore = [];\n' +
-          'configurationStore.push({key: "foobar.1", readonly: false, value: "test"});\n' +
-          'configurationStore.push({key: "foobar.2", readonly: true, value: "just a word"});\n' +
-          'configurationStore.push({key: "barfoo.1", readonly: false, value: "100"});\n' +
-          'cp.answerGetConfiguration( async (request) => {\n' +
-          '    cp.sendResponse(request.uniqueId, {configurationKey: configurationStore});\n' +
-          '});\n' +
-          'cp.answerChangeConfiguration( async (request) => {\n' +
-          '    const element = configurationStore.find(e => e.key == request.payload.key);\n' +
-          '    if(!element) {\n' +
-          '        cp.sendResponse(request.uniqueId, {status: "NotSupported"});\n' +
-          '    } else if (element.readonly) {\n' +
-          '        cp.sendResponse(request.uniqueId, {status: "Rejected"});\n' +
-          '    } else {\n' +
-          '        element.value = request.payload.value;\n' +
-          '        if(element.key == \'barfoo.1\') {\n' +
-          '            cp.sendResponse(request.uniqueId, {status: "RebootRequired"});\n' +
-          '        } else {\n' +
-          '            cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
-          '        }\n' +
-          '    }\n' +
-          '});\n' +
-          'cp.answerChangeAvailability( async (request) => {\n' +
-          '   cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
-          '   if (request.payload.type.toUpperCase() === "INOPERATIVE") {\n' +
-          '       await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Unavailable"});\n' +
-          '       await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Unavailable"});\n' +
-          '   }\n' +
-          '   else if (request.payload.type.toUpperCase() === "OPERATIVE") {\n' +
-          '       await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
-          '       await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
-          '   }\n' +
-          '});\n' +
-          'cp.answerRemoteStartTransaction( async (request) => {\n' +
-          '    await cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
-          '    await cp.sendAuthorize({ idTag: request.payload[\'idTag\'] });\n' +
-          '    await cp.sendStatusNotification({ connectorId: 1, errorCode: \'NoError\', status: \'Preparing\' });\n' +
-          '    cp.transaction = await cp.startTransaction({\n' +
-          '      connectorId: 1,\n' +
-          '      idTag: request.payload[\'idTag\'],\n' +
-          '      meterStart: 1377,\n' +
-          '      timestamp: \'2020-06-30T12:26:57.167Z\',\n' +
-          '    });\n' +
-          '    await cp.sendStatusNotification({ connectorId: 1, errorCode: \'NoError\', status: \'Charging\' });\n' +
-          '    await cp.meterValues({\n' +
-          '      connectorId: 1,\n' +
-          '      transactionId: cp.transaction.transactionId,\n' +
-          '      meterValue: [{\n' +
-          '        timestamp: \'2020-06-30T12:27:03.198Z\',\n' +
-          '        sampledValue: [{ value: \'1387\' }],\n' +
-          '      }],\n' +
-          '    });\n' +
-          '});\n' +
-          'cp.answerRemoteStopTransaction( async (request) => {\n' +
-          '    await cp.sendResponse(request.uniqueId, {status: "Accepted"});\n' +
-          '    await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "' + new Date().toISOString() + '"});\n' +
-          '    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});\n' +
-          '    await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n' +
-          '});\n';
+        text += defaultSetup;
         state.inputText = text;
       },
       bootnotification(state) {
