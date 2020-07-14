@@ -2,7 +2,6 @@ define(function(require) {
   let Vue = require('libs/vue');
   let Vuex = require('libs/vuex');
   let axios = require('libs/axios');
-  let defaultSetup = require('./default-setup');
 
   Vue.use(Vuex);
 
@@ -46,7 +45,7 @@ define(function(require) {
         if (state.wsStatus.startsWith('closed')) {
           text += `cp = await connect('${state.connectTemplate}/${state.cpName}');\n`;
         }
-        text += defaultSetup;
+        text += require('./startup-config');
         state.inputText = text;
       },
       bootnotification(state) {
