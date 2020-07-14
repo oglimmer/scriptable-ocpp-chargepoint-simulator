@@ -1,4 +1,5 @@
-module.exports = `
+define(function() {
+  return `
 const bootResp = await cp.sendBootnotification({ chargePointVendor: 'vendor', chargePointModel: '1' });
 await cp.sendHeartbeat();
 const heartbeatInterval = setInterval(() => cp.sendHeartbeat(), bootResp.interval * 1000);
@@ -95,3 +96,4 @@ cp.answerRemoteStopTransaction(async (request) => {
   await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Available' });
 });
 `;
+});
