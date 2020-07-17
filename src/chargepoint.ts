@@ -117,7 +117,7 @@ export class ChargepointOcpp16Json {
   /**
    * Defines the time in milli seconds for the request-response timeout of OCPP messages.
    */
-  private readonly RESPONSE_TIMEOUT = 15000;
+  private readonly RESPONSE_TIMEOUT = process.env.RESPONSE_TIMEOUT ? parseInt(process.env.RESPONSE_TIMEOUT) : 15000;
 
   keyStore: KeyStore;
 
