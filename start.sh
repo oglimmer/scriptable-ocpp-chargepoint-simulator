@@ -13,6 +13,7 @@ usage() {
     --keyStore - json string. Array of objects with keys: id, key, cert. Where id is the cpName, key the filename to the key file, cert the filename to the cert file. All PEM encoded.
     --keyStoreRoot - path where newly created keys/certs are being stored
     --ca - path to PEM encoded CA certificate file
+    --o - path to a options file which will be sourced
     --h - shows this help
   " 1>&2
 }
@@ -82,6 +83,10 @@ while [[ "${1:-}" =~ ^- ]] ; do
       export SSL_CERT_FILE=$2
       shift
       ;;
+    --o)
+      SIMULATOR_OPTS=$2
+      shift
+      ;;
     --stdin)
       STDIN=--stdin
       ;;
@@ -90,6 +95,10 @@ while [[ "${1:-}" =~ ^- ]] ; do
   esac
   shift
 done
+
+if [ -n "${SIMULATOR_OPTS:-}" ]; then
+  . ${SIMULATOR_OPTS}
+fi
 
 if [ -z "${DEBUG:-}" ]; then
     echo "No debug output configured."
