@@ -5,6 +5,7 @@ import * as _eval from 'eval';
 import {chargepointFactory} from './chargepoint';
 import http from './http/http';
 import {logger} from "./http-post-logger";
+import axios from 'axios';
 
 const debug = Debug('ocpp-chargepoint-simulator:main');
 
@@ -41,7 +42,7 @@ if (process.argv[2]) {
     javaScript = fs.readFileSync(path.join(process.cwd(), filename), 'utf-8');
   }
   if (javaScript.indexOf('module.exports') == -1) {
-    javaScript = "module.exports = async function(connect, logger) {\n" +
+    javaScript = "module.exports = async function(connect, logger, axios) {\n" +
     javaScript + "\n" +
     "};"
   }
@@ -51,7 +52,7 @@ if (process.argv[2]) {
   (async () => {
     try {
       const evalResp = _eval(javaScript, 'execute', {}, true);
-      await evalResp(chargepointFactory, logger);
+      await evalResp(chargepointFactory, logger, axios);
     } catch (e) {
       debug(e);
       if (!debug.enabled) {
