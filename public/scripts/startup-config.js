@@ -67,23 +67,25 @@ cp.answerChangeAvailability(async (request) => {
 });
 cp.answerRemoteStartTransaction(async (request) => {
   await cp.sendResponse(request.uniqueId, { status: 'Accepted' });
-  await cp.sendAuthorize({ idTag: request.payload['idTag'] });
-  await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Preparing' });
-  cp.transaction = await cp.startTransaction({
-    connectorId: 1,
-    idTag: request.payload['idTag'],
-    meterStart: 1377,
-    timestamp: '2020-06-30T12:26:57.167Z',
-  });
-  await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Charging' });
-  await cp.meterValues({
-    connectorId: 1,
-    transactionId: cp.transaction.transactionId,
-    meterValue: [{
-      timestamp: '2020-06-30T12:27:03.198Z',
-      sampledValue: [{ value: '1387' }],
-    }],
-  });
+  const statusResponse = await cp.sendAuthorize({ idTag: request.payload['idTag'] });
+  if (statusResponse.idTagInfo.status === 'Accepted') {
+    await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Preparing' });
+    cp.transaction = await cp.startTransaction({
+      connectorId: 1,
+      idTag: request.payload['idTag'],
+      meterStart: 1377,
+      timestamp: '2020-06-30T12:26:57.167Z',
+    });
+    await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Charging' });
+    await cp.meterValues({
+      connectorId: 1,
+      transactionId: cp.transaction.transactionId,
+      meterValue: [{
+        timestamp: '2020-06-30T12:27:03.198Z',
+        sampledValue: [{ value: '1387' }],
+      }],
+    });
+  }
 });
 cp.answerRemoteStopTransaction(async (request) => {
   await cp.sendResponse(request.uniqueId, { status: 'Accepted' });
