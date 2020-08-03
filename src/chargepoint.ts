@@ -11,7 +11,7 @@ import {
   BootNotificationResponse,
   CertificateSignedPayload,
   ChangeAvailabilityPayload,
-  ChangeConfigurationPayload,
+  ChangeConfigurationPayload, DataTransferPayload,
   DiagnosticsStatusNotificationPayload,
   ExtendedTriggerMessagePayload,
   FirmwareStatusNotificationPayload,
@@ -31,7 +31,7 @@ import {
   StopTransactionPayload,
   StopTransactionResponse,
   TriggerMessagePayload,
-  UpdateFirmwarePayload
+  UpdateFirmwarePayload,
 } from './ocpp1_6';
 import {CertManagement, Csr} from "./cert-management";
 import {KeyStore} from "./keystore";
@@ -420,6 +420,17 @@ export class ChargepointOcpp16Json {
   answerRemoteStopTransaction<T>(cb: (request: OcppRequest<RemoteStartTransactionPayload>) => void, options?: AnswerOptions<T>): void {
     debug('answerRemoteStopTransaction');
     this.registeredCallbacks.set("RemoteStopTransaction", {cb, options});
+  }
+
+  /**
+   * Registers a function to implement logic for all the data tranfer operations in an lms
+   *
+   * @param cb
+   * @param options
+   */
+  answerDataTransfer<T>(cb: (request: OcppRequest<DataTransferPayload>) => void, options?: AnswerOptions<T>): void {
+    debug('answerDataTransfer');
+    this.registeredCallbacks.set("DataTransfer", {cb, options});
   }
 
   /**

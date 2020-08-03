@@ -97,5 +97,19 @@ cp.answerRemoteStopTransaction(async (request) => {
   await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Finishing' });
   await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Available' });
 });
+cp.answerDataTransfer(async (request) => {
+  let data;
+  switch (request.payload.messageId) {
+     case '9':
+       // get configuration
+       data = [ { globalId: request.payload.globalId, idents: request.payload.data.idents.map(name => ({name, unit: '', value: 'some'})) } ];
+       break;
+     case '30':
+       // get topology
+       data = [ { "globalId":"DE91110000100001010F", "clusterData": [1, 4, 6] }, { "globalId":"DE91110000100002010F", "clusterData": [2, 3]}, { "globalId":"DE91110000100003010B", "clusterData": []}, { "globalId":"DE91110000100003010A", "clusterData": []}, { "globalId":"DE91110000100002020F", "clusterData": [5]}, { "globalId":"DE91110000100003020A", "clusterData": []}, { "globalId":"DE91110000100004010F", "clusterData": []}, ];
+       break;
+  }
+  await cp.sendResponse(request.uniqueId, { status: 'Accepted', ...request.payload, data });
+});
 `;
 });
