@@ -100,14 +100,18 @@ cp.answerRemoteStopTransaction(async (request) => {
 cp.answerDataTransfer(async (request) => {
   let data;
   switch (request.payload.messageId) {
-     case '9':
-       // get configuration
-       data = [ { globalId: request.payload.globalId, idents: request.payload.data.idents.map(name => ({name, unit: '', value: 'some'})) } ];
-       break;
-     case '30':
-       // get topology
-       data = [ { "globalId":"DE91110000100001010F", "clusterData": [1, 4, 6] }, { "globalId":"DE91110000100002010F", "clusterData": [2, 3]}, { "globalId":"DE91110000100003010B", "clusterData": []}, { "globalId":"DE91110000100003010A", "clusterData": []}, { "globalId":"DE91110000100002020F", "clusterData": [5]}, { "globalId":"DE91110000100003020A", "clusterData": []}, { "globalId":"DE91110000100004010F", "clusterData": []}, ];
-       break;
+    case '2':
+      // get measurement
+      data = [ { globalId: request.payload.globalId, idents: [{"name":"Meas_Super_Cluster_Topology","unit":"","value":"None"},{"name":"Meas_Target_Cooling_Temperature ","unit":"","value":"32"},{"name":"Meas_Door_Status","unit":"","value":"Open"},{"name":"Meas_Fluid_Detection_Sensor_1","unit":"","value":"FluidDetected"},{"name":"Meas_Fluid_Detection_Sensor_2","unit":"","value":"FluidNotDetected"},{"name":"Meas_Inlet_Cooling_Temperature","unit":"","value":"44"},{"name":"Meas_Outlet_Cooling_Temperature","unit":"","value":"42"}] } ];
+      break;
+    case '9':
+      // get configuration
+      data = [ { globalId: request.payload.globalId, idents: [{"name":"CP_ChargePointIdentity","value":"LMS1"},{"name":"CP_ChargePointModel","value":"Awesome ChargePoint"},{"name":"CP_ChargePointVendor","value":"PES"},{"name":"CP_ChargePointSerialNumber","value":"22.33.41.62.As.3d"},{"name":"CP_ChargeParkOperator","value":"MHP"},{"name":"CP_UTC_Time_Offset","value":"2"},{"name":"CP_Daylight_Saving_Usage","value":"Off"},{"name":"CP_Backend_Address","value":"wss://ws.cpoc-poc.de/DE911*0000000*0000000*9110911"},{"name":"CP_Park_Prefix","value":"000000000000000"},{"name":"CP_ICCID","value":"Some number"},{"name":"CP_Coding_Complete","value":"1"},{"name":"CP_Clustering","value":"1, 1, 8197509, 91829384"},{"name":"CP_Diagnostic_Mode","value":"activated"},{"name":"CP_BZ_Mon_Activation","value":"On"},{"name":"CP_CRC_Mon_Activation","value":"On"},{"name":"CP_DLC_Mon_Activation","value":"Off"},{"name":"CP_Encoding_Activation","value":"On"}] } ];
+      break;
+    case '30':
+      // get topology
+      data = [ { "globalId":"DE91110000100001010F", "clusterData": [1, 4, 6] }, { "globalId":"DE91110000100002010F", "clusterData": [2, 3]}, { "globalId":"DE91110000100003010B", "clusterData": []}, { "globalId":"DE91110000100003010A", "clusterData": []}, { "globalId":"DE91110000100002020F", "clusterData": [5]}, { "globalId":"DE91110000100003020A", "clusterData": []}, { "globalId":"DE91110000100004010F", "clusterData": []}, ];
+      break;
   }
   await cp.sendResponse(request.uniqueId, { status: 'Accepted', ...request.payload, data });
 });
