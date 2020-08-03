@@ -237,6 +237,12 @@ export interface RemoteStartTransactionPayload {
   chargingProfile?: ChargingProfile
 }
 
+export interface DataTransferPayload {
+  globalId: string,
+  vendorId: string,
+  data?: any
+}
+
 export interface RemoteStartTransactionResponse {
   status: string
 }
