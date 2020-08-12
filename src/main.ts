@@ -6,6 +6,7 @@ import {chargepointFactory} from './chargepoint';
 import http from './http/http';
 import {logger} from "./http-post-logger";
 import axios from 'axios';
+import * as FormData from 'form-data';
 
 const debug = Debug('ocpp-chargepoint-simulator:main');
 
@@ -52,6 +53,7 @@ if (process.argv[2]) {
   (async () => {
     try {
       const evalResp = _eval(javaScript, 'execute', {}, true);
+      axios["FormData"] = FormData; // to post multipart/form-data FormData lib is needed, make it easy to access here
       await evalResp(chargepointFactory, logger, axios);
     } catch (e) {
       debug(e);
