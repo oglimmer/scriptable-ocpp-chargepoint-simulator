@@ -108,5 +108,10 @@ if [ -n "$DEV" ]; then
   [ -n "$STDIN" ] && echo "You cannot combine dev and stdin" && exit 1
   npm run dev "$@"
 else
-  ./node_modules/.bin/ts-node --project ./tsconfig.release.json ./src/main.ts $STDIN "$@"
+  if [ -n "${SSL_CERT_FILE:-}" ]; then
+    # nasty special case, but the environment variable SSL_CLIENT_KEYSTORE requires to also set --use-openssl-ca on node (not ts-node)
+    node --use-openssl-ca ./node_modules/.bin/ts-node --project ./tsconfig.release.json ./src/main.ts $STDIN "$@"
+  else
+    ./node_modules/.bin/ts-node --project ./tsconfig.release.json ./src/main.ts $STDIN "$@"
+  fi
 fi
