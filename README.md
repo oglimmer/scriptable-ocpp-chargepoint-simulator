@@ -253,3 +253,22 @@ cp.answerCertificateSigned( async (request) => {
 ### Architecture
 
 ![alt text](architecture.png "Architectural overview")
+
+### Disable host name verification
+
+To disable the host name verification when using TLS, apply this patch:
+
+```
+diff --git a/src/websocket-connection-centralsystem.ts b/src/websocket-connection-centralsystem.ts
+index ec53fdc..e0323a8 100644
+--- a/src/websocket-connection-centralsystem.ts
++++ b/src/websocket-connection-centralsystem.ts
+@@ -32,6 +32,7 @@ export class WSConCentralSystem{
+           options.key = fs.readFileSync(keyStoreElement.key);
+           options.cert = fs.readFileSync(keyStoreElement.cert);
+         }
++        options.checkServerIdentity = () => undefined;
+       }
+       this.ws = new WebSocket(this.url, "ocpp1.6", options);
+       let promiseResolved = false;
+```
