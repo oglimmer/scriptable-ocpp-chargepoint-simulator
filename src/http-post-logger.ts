@@ -24,12 +24,7 @@ class HttpPostLogger {
   // log is actually string | object | Error
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private formatLog(loggerName: string, cpName: string, log: any): string {
-    let message;
-    if(log.stack) {
-      message = log.toString();
-    } else {
-      message = JSON.stringify(log);
-    }
+    const message = log.stack || JSON.stringify(log);
     return JSON.stringify({
       time: new Date().toISOString(),
       loggerName,
