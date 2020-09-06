@@ -4,8 +4,8 @@ import {chargepointFactory, ChargepointOcpp16Json} from "../../chargepoint";
 import * as _eval from 'eval';
 import {RemoteConsoleTransmissionType, WSConRemoteConsole} from "../../remote-console-connection";
 import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from '../../state-service';
-import {WSConCentralSystem} from "../../websocket-connection-centralsystem";
 import * as util from 'util';
+import {FailSafeConnectionAdapter} from "../../fail-safe-connection-adapter";
 
 const debug = Debug('ocpp-chargepoint-simulator:simulator:cp-route');
 
@@ -32,7 +32,7 @@ cpRouter.post('/:cpName?', async (req, res) => {
   try {
     const enhChargepointFactory = (url: string): Promise<ChargepointOcpp16Json> => chargepointFactory(url, cpName);
     const evalResp = _eval(javaScript, 'request-body', {}, true);
-    const wsConCentralSystem = wsConCentralSystemRepository.get(cpName) as WSConCentralSystem;
+    const wsConCentralSystem = wsConCentralSystemRepository.get(cpName) as FailSafeConnectionAdapter;
     const chargepointOcpp16Json = wsConCentralSystem ? wsConCentralSystem.api : undefined;
     const returningChargepointOcpp16Json = await evalResp(enhChargepointFactory, chargepointOcpp16Json);
     if (returningChargepointOcpp16Json) {

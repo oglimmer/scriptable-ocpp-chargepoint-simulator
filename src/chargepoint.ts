@@ -11,7 +11,8 @@ import {
   BootNotificationResponse,
   CertificateSignedPayload,
   ChangeAvailabilityPayload,
-  ChangeConfigurationPayload, DataTransferPayload,
+  ChangeConfigurationPayload,
+  DataTransferPayload,
   DiagnosticsStatusNotificationPayload,
   ExtendedTriggerMessagePayload,
   FirmwareStatusNotificationPayload,
@@ -41,6 +42,7 @@ import * as express from "express";
 import {IRouter} from "express";
 import {createHttpTerminator} from 'http-terminator';
 import * as expressBasicAuth from "express-basic-auth";
+import {FailSafeConnectionAdapter} from "./fail-safe-connection-adapter";
 
 
 /**
@@ -65,33 +67,12 @@ function uuidv4(): string {
 }
 
 /**
- * Converts an object of type OcppRequest (TypeScript) into an OCPP request (protocol) array.
- *
- * @param req an Array representing an OCPP Request as [message-type-id, unique-id, action, payload]
- */
-function ocppReqToArray<T>(req: OcppRequest<T>): Array<string | number | Payload> {
-  return [req.messageTypeId, req.uniqueId, req.action, req.payload];
-}
-
-/**
  * Converts an object of type OcppResponse (TypeScript) into an OCPP response (protocol) array.
  *
  * @param resp an Array representing an OCPP Response as [message-type-id, unique-id, payload]
  */
 function ocppResToArray<T>(resp: OcppResponse<T>): Array<string | number | Payload> {
   return [resp.messageTypeId, resp.uniqueId, resp.payload];
-}
-
-/**
- * Stores an origin request of type OcppRequest and a callback function of type Payload.
- * To sychronize the OCPP response with it's original request, we store object of this type when
- * a request is done. When the response comes eventually we use the callback to pass it back to the
- * caller of the request.
- */
-interface MessageListenerElement<T> {
-  request: OcppRequest<T>;
-
-  next(resp: Payload): void;
 }
 
 /**
@@ -114,22 +95,10 @@ interface OcppRequestWithOptions<T> {
  */
 export class ChargepointOcpp16Json {
 
-  /**
-   * Defines the time in milli seconds for the request-response timeout of OCPP messages.
-   */
-  private readonly RESPONSE_TIMEOUT = process.env.RESPONSE_TIMEOUT ? parseInt(process.env.RESPONSE_TIMEOUT) : 15000;
-
   keyStore: KeyStore;
 
   /** Reference to the class handling the WebSocket connection to the central system  */
-  private wsConCentralSystem: WSConCentralSystem;
-
-  /** OCPP doesn't allow to send more than 1 message at a time. This queues messages until the last is answered. */
-  private readonly deferredMessageQueue: Array<Array<number | string | object>> = [];
-  /** Determines if a new message can be sent  */
-  private isCurrentlyRequestNotAnswered = false;
-  /** Holds all requests currently not answered with a response. Within a tick this might be out of sync with isCurrentlyRequestNotAnswered  */
-  private registeredOpenRequests: Array<MessageListenerElement<Payload>> = [];
+  private wsConCentralSystem: FailSafeConnectionAdapter = new FailSafeConnectionAdapter();
 
   /**
    * OCPP requests started from the central system need to be answered by code from this call.
@@ -200,7 +169,7 @@ export class ChargepointOcpp16Json {
    */
   connect(url: string, cpName?: string): Promise<void> {
     debug('connect');
-    this.wsConCentralSystem = new WSConCentralSystem(connectCounter++, url, this, cpName);
+    this.wsConCentralSystem.wsConCentralSystem = new WSConCentralSystem(connectCounter++, url, this, cpName);
     this.keyStore = new KeyStore(this.wsConCentralSystem.cpName);
     return this.wsConCentralSystem.connect();
   }
@@ -208,7 +177,7 @@ export class ChargepointOcpp16Json {
   reConnect(): Promise<void> {
     debug('reConnect');
     this.wsConCentralSystem.close();
-    this.wsConCentralSystem = new WSConCentralSystem(connectCounter++, this.wsConCentralSystem.url, this, this.wsConCentralSystem.cpName);
+    this.wsConCentralSystem.wsConCentralSystem = new WSConCentralSystem(connectCounter++, this.wsConCentralSystem.url, this, this.wsConCentralSystem.cpName);
     return this.wsConCentralSystem.connect();
   }
   /**
@@ -562,7 +531,7 @@ export class ChargepointOcpp16Json {
       }
       logger.log("ChargepointOcpp16Json:onMessage:response", this.wsConCentralSystem.cpName, ocppResponse);
       wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, ocppResponse))
-      this.triggerRequestResult(ocppResponse);
+      this.wsConCentralSystem.triggerRequestResult(ocppResponse);
     } else {
       const ocppRequest = {
         messageTypeId: ocppMessage[0],
@@ -592,68 +561,15 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Tries to send a message (data) via the WebSocket to the central system. It might deferr this, if an OCPP message is currenlty in progress.
-   *
-   * @param data string to be sent. Must be a stringified OCPP request array.
-   */
-  private trySendMessageOrDeferr(data: Array<number | string | object>): void {
-    if (this.isCurrentlyRequestNotAnswered === true) {
-      debug(`sendToWebsocket, queueSize=${this.deferredMessageQueue.length}`);
-      this.deferredMessageQueue.unshift(data);
-    } else {
-      this.isCurrentlyRequestNotAnswered = true;
-      this.sendData(data);
-    }
-  }
-
-  /**
-   * When a message was answered, this checks if there are deferred messages waiting to be sent.
-   */
-  private processDeferredMessages(): void {
-    this.isCurrentlyRequestNotAnswered = this.deferredMessageQueue.length > 0;
-    if (this.isCurrentlyRequestNotAnswered === true) {
-      debug(`processDeferredMessages, queueSize=${this.deferredMessageQueue.length}`);
-      const data = this.deferredMessageQueue.pop();
-      this.sendData(data);
-    }
-  }
-
-  /**
-   * Send the data to the underlaying websocket connection to the central system.
-   *
-   * @param data OcppRequest array
-   */
-  private sendData(data: Array<number | string | object>): void {
-    this.wsConCentralSystem.send(JSON.stringify(data));
-    logger.log("ChargepointOcpp16Json:sendData", this.wsConCentralSystem.cpName, {
-      messageTypeId: data[0],
-      uniqueId: data[1],
-      action: data[2],
-      payload: data[3]
-    });
-  }
-
-  /**
    * Sends an OCPP message to the central system. The promise resolves when the central system sends a CALLRESULT. It rejects when the timeout is due.
    *
    * @param req OCPP request object
    */
   sendOcpp<T, U>(req: OcppRequest<U>): Promise<T> {
     debug(`send: ${JSON.stringify(req)}`);
-    return new Promise((resolve: (T) => void, reject: (string) => void) => {
-      const timeoutHandle = setTimeout(() => {
-        this.processDeferredMessages(); // Not sure, if we should proceed sending messages, if we just got a timeout and not an actual response.
-        reject(`Timeout waiting for ${JSON.stringify(req)}`)
-      }, this.RESPONSE_TIMEOUT);
-      this.registerRequest(req, (resp) => {
-        this.processDeferredMessages();
-        clearTimeout(timeoutHandle);
-        resolve(resp);
-      });
-      const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
-      wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, req))
-      this.trySendMessageOrDeferr(ocppReqToArray(req));
-    })
+    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
+    wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, req))
+    return this.wsConCentralSystem.trySendMessageOrDeferr(req);
   }
 
   /**
@@ -681,29 +597,6 @@ export class ChargepointOcpp16Json {
   close(): void {
     this.wsConCentralSystem.close();
     this.wsConCentralSystem = null;
-  }
-
-  /**
-   * Match an OCPP response with a previously registered OCPP request
-   *
-   * @param resp OCPP response
-   */
-  private triggerRequestResult<T>(resp: OcppResponse<T>): void {
-    this.registeredOpenRequests.filter(e => resp.uniqueId === e.request.uniqueId).forEach(e => e.next(resp.payload));
-    this.registeredOpenRequests = this.registeredOpenRequests.filter(e => resp.uniqueId !== e.request.uniqueId);
-  }
-
-  /**
-   * After submitting an OCPP request, register the request so we can match an upcoming response with a previous request.
-   *
-   * @param req OCPP request
-   * @param next callback function to call when the response arrived
-   */
-  private registerRequest<T>(req: OcppRequest<T>, next: (resp: Payload) => void): void {
-    this.registeredOpenRequests.push({
-      request: req,
-      next: next
-    });
   }
 
   /**
@@ -805,7 +698,7 @@ export class ChargepointOcpp16Json {
  */
 export function chargepointFactory(url: string, cpName?: string): Promise<ChargepointOcpp16Json> {
   const wsConCentralSystemFromRepository = wsConCentralSystemRepository.get(cpName);
-  if (wsConCentralSystemFromRepository && wsConCentralSystemFromRepository.ws.readyState === WebSocket.OPEN) {
+  if (wsConCentralSystemFromRepository && wsConCentralSystemFromRepository.readyState === WebSocket.OPEN) {
     wsConCentralSystemFromRepository.close();
   }
   const cp = new ChargepointOcpp16Json();

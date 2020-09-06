@@ -1,5 +1,5 @@
 import {WSConRemoteConsole} from "./remote-console-connection";
-import {WSConCentralSystem} from "./websocket-connection-centralsystem";
+import {FailSafeConnectionAdapter} from "./fail-safe-connection-adapter";
 
 /**
  * Holds WebSocket connections to 1...n remote-consoles per cp-name
@@ -49,17 +49,17 @@ export const wsConRemoteConsoleRepository = new StateServiceWsConRemoteConsole()
  */
 class StateServiceWsConCentralSystem {
 
-  private store: Map<string, WSConCentralSystem> = new Map();
+  private store: Map<string, FailSafeConnectionAdapter> = new Map();
 
-  public set(cpName: string, value: WSConCentralSystem): void {
+  public set(cpName: string, value: FailSafeConnectionAdapter): void {
     this.store.set(cpName, value);
   }
 
-  public get(cpName: string): WSConCentralSystem {
+  public get(cpName: string): FailSafeConnectionAdapter {
     return this.store.get(cpName);
   }
 
-  public getAll(): Array<WSConCentralSystem> {
+  public getAll(): Array<FailSafeConnectionAdapter> {
     return Array.from(this.store.values());
   }
 

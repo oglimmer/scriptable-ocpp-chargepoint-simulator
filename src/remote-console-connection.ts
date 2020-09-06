@@ -48,7 +48,7 @@ export class WSConRemoteConsole {
 
   updateCentralSystemConnectionStatus(): void {
     const wsConCentralSystem = wsConCentralSystemRepository.get(this.cpName);
-    const wsStatus = wsConCentralSystem && wsConCentralSystem.ws.readyState == WebSocket.OPEN ? `open (${wsConCentralSystem.url})` : 'closed.';
+    const wsStatus = wsConCentralSystem && wsConCentralSystem.readyState == WebSocket.OPEN ? `open (${wsConCentralSystem.url})` : 'closed.';
     const wsStatusId = wsConCentralSystem ? wsConCentralSystem.id : -1;
     this.ws.send(JSON.stringify({
       type: RemoteConsoleTransmissionType.WS_STATUS, payload: {

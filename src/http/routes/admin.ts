@@ -14,7 +14,7 @@ adminRouter.get('/', async (req, res) => {
       conCentralSystem: {
         cpName: e.cpName,
         url: e.url,
-        readyState: e.ws.readyState
+        readyState: e.readyState
       },
       keyStore: e.api.keystore().get()
     })),
