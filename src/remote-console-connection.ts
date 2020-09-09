@@ -1,7 +1,7 @@
 import * as WebSocket from 'ws';
 import http from "http";
-import Debug from 'debug';
 import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from './state-service';
+import {log} from "./log";
 
 export enum RemoteConsoleTransmissionType {
   LOG,
@@ -9,8 +9,8 @@ export enum RemoteConsoleTransmissionType {
   WS_ERROR
 }
 
-const debugWSConRemoteConsole = Debug('ocpp-chargepoint-simulator:simulator:WSConRemoteConsole');
-const debugWSServerRemoteConsole = Debug('ocpp-chargepoint-simulator:simulator:WSServerRemoteConsole');
+const LOG_NAME_REMOTE_CONSOLE = 'ocpp-chargepoint-simulator:simulator:WSConRemoteConsole';
+const LOG_NAME_SERVER_REMOTE_CONSOLE = 'ocpp-chargepoint-simulator:simulator:WSServerRemoteConsole';
 
 /**
  * Holds and manages the WS communication to the remote-console (usually a browser)
@@ -20,22 +20,22 @@ export class WSConRemoteConsole {
   constructor(readonly ws: WebSocket, readonly cpName: string, readonly remoteHost, readonly userAgent) {
     ws.on('message', this.onMessage.bind(this));
     ws.on('close', this.onClose.bind(this));
-    debugWSConRemoteConsole(`Registered ${cpName} from ${remoteHost} using ${userAgent}`);
+    log.debug(LOG_NAME_REMOTE_CONSOLE, cpName, `Registered ${cpName} from ${remoteHost} using ${userAgent}`);
   }
 
   onMessage(message): void {
-    debugWSConRemoteConsole('received: %s', message);
+    log.debug(LOG_NAME_REMOTE_CONSOLE, '-', `received: ${message}`);
   };
 
   onClose(): void {
-    debugWSConRemoteConsole('close: %s', this.cpName);
+    log.debug(LOG_NAME_REMOTE_CONSOLE, '-', `close: ${this.cpName}`);
     wsConRemoteConsoleRepository.remove(this.cpName, this);
   };
 
   add(type: RemoteConsoleTransmissionType, payload: string | object): void {
     const connectedClients = wsConRemoteConsoleRepository.get(this.cpName);
     if (!connectedClients) {
-      debugWSConRemoteConsole(`Trying to send msg to ${this.cpName} but no connected client.`);
+      log.debug(LOG_NAME_REMOTE_CONSOLE, this.cpName, `Trying to send msg to ${this.cpName} but no connected client.`);
       return;
     }
     connectedClients.forEach((e: WSConRemoteConsole) => {
@@ -48,8 +48,8 @@ export class WSConRemoteConsole {
 
   updateCentralSystemConnectionStatus(): void {
     const wsConCentralSystem = wsConCentralSystemRepository.get(this.cpName);
-    const wsStatus = wsConCentralSystem && wsConCentralSystem.readyState == WebSocket.OPEN ? `open (${wsConCentralSystem.url})` : 'closed.';
-    const wsStatusId = wsConCentralSystem ? wsConCentralSystem.id : -1;
+    const wsStatus = wsConCentralSystem && wsConCentralSystem.readyState == WebSocket.OPEN ? `open (${wsConCentralSystem.config.url})` : 'closed.';
+    const wsStatusId = wsConCentralSystem ? wsConCentralSystem.wsConCentralSystem.id : -1;
     this.ws.send(JSON.stringify({
       type: RemoteConsoleTransmissionType.WS_STATUS, payload: {
         id: wsStatusId,
@@ -70,7 +70,7 @@ class WSServerRemoteConsole {
     port++;
     this.wss = new WebSocket.Server({port, host});
     this.wss.on('connection', this.onNewConnection.bind(this));
-    debugWSServerRemoteConsole(`WSServerRemoteConsole listening on ${host}:${port}`);
+    log.debug(LOG_NAME_SERVER_REMOTE_CONSOLE, '-', `WSServerRemoteConsole listening on ${host}:${port}`);
   };
 
   onNewConnection(ws: WebSocket, req: http.IncomingMessage): void {

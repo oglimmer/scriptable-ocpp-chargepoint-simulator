@@ -1,5 +1,5 @@
 import {WSConRemoteConsole} from "./remote-console-connection";
-import {FailSafeConnectionAdapter} from "./fail-safe-connection-adapter";
+import {QueueSubmitLayer} from "./queue-submit-layer";
 
 /**
  * Holds WebSocket connections to 1...n remote-consoles per cp-name
@@ -49,17 +49,17 @@ export const wsConRemoteConsoleRepository = new StateServiceWsConRemoteConsole()
  */
 class StateServiceWsConCentralSystem {
 
-  private store: Map<string, FailSafeConnectionAdapter> = new Map();
+  private store: Map<string, QueueSubmitLayer> = new Map();
 
-  public set(cpName: string, value: FailSafeConnectionAdapter): void {
+  public set(cpName: string, value: QueueSubmitLayer): void {
     this.store.set(cpName, value);
   }
 
-  public get(cpName: string): FailSafeConnectionAdapter {
+  public get(cpName: string): QueueSubmitLayer {
     return this.store.get(cpName);
   }
 
-  public getAll(): Array<FailSafeConnectionAdapter> {
+  public getAll(): Array<QueueSubmitLayer> {
     return Array.from(this.store.values());
   }
 

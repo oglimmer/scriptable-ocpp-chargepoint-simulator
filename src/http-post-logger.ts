@@ -1,10 +1,7 @@
 import * as https from 'https';
 import {httpPostLoggerConfig} from './http-post-logger-config';
-import Debug from 'debug';
 
-const debug = Debug('ocpp-chargepoint-simulator:simulator:HttpPostLogger');
 const logConfig = httpPostLoggerConfig();
-debug(`Remote logging is ${logConfig.enabled}`);
 
 class HttpPostLogger {
 
@@ -35,7 +32,7 @@ class HttpPostLogger {
 
   private sendLogs(): void {
     if (logConfig.debug) {
-      this.collectedLogs.forEach(e => debug(e));
+      this.collectedLogs.forEach(e => console.log(e));
     }
     if (logConfig.enabled) {
       this.sendLogsToRemote();
@@ -45,14 +42,14 @@ class HttpPostLogger {
   private sendLogsToRemote(): void {
     const req = https.request(logConfig.options, (res): void => {
       if (res.statusCode !== 200) {
-        debug(`Failed to sendLogs. http status = ${res.statusCode}, headers: ${JSON.stringify(res.headers)}`);
+        console.log(`Failed to sendLogs. http status = ${res.statusCode}, headers: ${JSON.stringify(res.headers)}`);
       }
       res.on('data', (data) => {
-        debug(`Got response from log (should not happen). ${data}`);
+        console.log(`Got response from log (should not happen). ${data}`);
       });
     });
     req.on('error', (e) => {
-      debug(`Error while sending logs. error = ${e}`);
+      console.log(`Error while sending logs. error = ${e}`);
     });
     this.collectedLogs.forEach(e => {
       req.write(e);

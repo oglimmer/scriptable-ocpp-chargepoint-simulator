@@ -1,8 +1,8 @@
 import * as PromiseFtp from "promise-ftp";
 import * as fs from 'fs';
-import Debug from 'debug';
+import {log} from "./log";
 
-const debug = Debug('ocpp-chargepoint-simulator:simulator:ftp-support');
+const LOG_NAME = 'ocpp-chargepoint-simulator:simulator:ftp-support';
 
 interface FtpParameters {
   user: string;
@@ -74,7 +74,7 @@ export class FtpSupport {
     if (!fs.existsSync(localPath)) {
       fs.mkdirSync(localPath, {recursive: true});
     }
-    debug(`ftp credentials: user=${user}, password.length=${password.length}, host=${host}, fileName=${fileName}, remotePath=${remotePath}, localPath=${localPath}`);
+    log.debug(LOG_NAME, '-', `ftp credentials: user=${user}, password.length=${password.length}, host=${host}, fileName=${fileName}, remotePath=${remotePath}, localPath=${localPath}`);
     return {user, password, host, localPath, fileName, remotePath};
   }
 

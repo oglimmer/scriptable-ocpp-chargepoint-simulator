@@ -12,11 +12,11 @@ adminRouter.get('/', async (req, res) => {
   const output = JSON.stringify({
     wsConCentralSystemRepository: wsConCentralSystemData.map(e => ({
       conCentralSystem: {
-        cpName: e.cpName,
-        url: e.url,
+        cpName: e.config.cpName,
+        url: e.config.url,
         readyState: e.readyState
       },
-      keyStore: e.api.keystore().get()
+      keyStore: e.config.keyStore.get()
     })),
     wsConRemoteConsoleRepository: wsConRemoteConsoleData.map(e => {
       const mappedObj = {};

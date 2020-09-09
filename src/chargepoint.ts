@@ -1,7 +1,5 @@
-import Debug from 'debug';
 import * as WebSocket from 'ws';
 import {RemoteConsoleTransmissionType, WSConRemoteConsole} from "./remote-console-connection";
-import {WSConCentralSystem} from "./websocket-connection-centralsystem";
 import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from "./state-service";
 import {FtpSupport} from "./ftp";
 import {
@@ -36,24 +34,17 @@ import {
 } from './ocpp1_6';
 import {CertManagement, Csr} from "./cert-management";
 import {KeyStore} from "./keystore";
-import {logger} from './http-post-logger';
 import * as http from "http";
 import * as express from "express";
 import {IRouter} from "express";
 import {createHttpTerminator} from 'http-terminator';
 import * as expressBasicAuth from "express-basic-auth";
-import {FailSafeConnectionAdapter} from "./fail-safe-connection-adapter";
+import {QueueSubmitLayer} from "./queue-submit-layer";
+import {log} from "./log";
+import {Config} from "./config";
 
 
-/**
- * Logger defintion
- */
-const debug = Debug('ocpp-chargepoint-simulator:simulator:ChargepointOcpp16Json');
-
-/** Counter to give each instance of ChargepointOcpp16Json a unique ID */
-// this is needed as the front-end knows only one (and only exactly one) instance, so the FE need to find the
-// latest instance (using the highest ID)
-let connectCounter = 0;
+const LOG_NAME = 'ocpp-chargepoint-simulator:simulator:ChargepointOcpp16Json';
 
 /**
  * Generates a UUID v4 - e.g. 550e8400-e29b-11d4-a716-446655440000
@@ -95,10 +86,10 @@ interface OcppRequestWithOptions<T> {
  */
 export class ChargepointOcpp16Json {
 
-  keyStore: KeyStore;
+  private config: Config = new Config();
 
   /** Reference to the class handling the WebSocket connection to the central system  */
-  private wsConCentralSystem: FailSafeConnectionAdapter = new FailSafeConnectionAdapter();
+  private wsConCentralSystem: QueueSubmitLayer = new QueueSubmitLayer(this, this.config);
 
   /**
    * OCPP requests started from the central system need to be answered by code from this call.
@@ -121,33 +112,20 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Outputs a string or object to the log console.
+   * If connected to the CS, outputs a string or object to the remote console. If not remote console is connected, sends the output into the
+   * logging backend.
    *
    * @param output string or object send to the log output console
    * @return true if log was successfully sent to remote-console, false if logged locally
    */
   log(output: (string | object)): boolean {
-    let wsConRemoteConsoleArr;
-    if (this.wsConCentralSystem) {
-      wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
-      wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.WS_ERROR, output));
-    }
-    if (!wsConRemoteConsoleArr || wsConRemoteConsoleArr.length === 0) {
-      debug(output);
-      return false;
-    } else {
+    if (this.areAnyRemoteConsolesConnected()) {
+      this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.WS_ERROR, output);
       return true;
+    } else {
+      log.debug(LOG_NAME, this.config.cpName ? this.config.cpName : "-", output);
+      return false;
     }
-  }
-
-  /**
-   * Send the output to a remote logger (connected by http-post-logger) and the log console.
-   *
-   * @param output string or object send to the remote log and the console log
-   */
-  logRemote(output: (string | object)): void {
-    this.log(output);
-    logger.log("ChargepointOcpp16Json:logRemote", this.wsConCentralSystem ? this.wsConCentralSystem.cpName : null, output);
   }
 
   /**
@@ -168,16 +146,14 @@ export class ChargepointOcpp16Json {
    * @returns a Promise which resolves when the connection is established and rejects when the connection cannot be established.
    */
   connect(url: string, cpName?: string): Promise<void> {
-    debug('connect');
-    this.wsConCentralSystem.wsConCentralSystem = new WSConCentralSystem(connectCounter++, url, this, cpName);
-    this.keyStore = new KeyStore(this.wsConCentralSystem.cpName);
+    log.debug(LOG_NAME, cpName, 'connect');
+    this.config.init(url, cpName);
     return this.wsConCentralSystem.connect();
   }
 
   reConnect(): Promise<void> {
-    debug('reConnect');
+    log.debug(LOG_NAME, this.config.cpName, 'reConnect');
     this.wsConCentralSystem.close();
-    this.wsConCentralSystem.wsConCentralSystem = new WSConCentralSystem(connectCounter++, this.wsConCentralSystem.url, this, this.wsConCentralSystem.cpName);
     return this.wsConCentralSystem.connect();
   }
   /**
@@ -185,7 +161,7 @@ export class ChargepointOcpp16Json {
    * received within the timeout period.
    */
   sendHeartbeat(): Promise<void> {
-    debug('sendHeartbeat');
+    log.debug(LOG_NAME, this.config.cpName, 'sendHeartbeat');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -201,7 +177,7 @@ export class ChargepointOcpp16Json {
    * @param payload boot notification payload object
    */
   sendBootnotification(payload: BootNotificationPayload): Promise<BootNotificationResponse> {
-    debug('sendBootnotification');
+    log.debug(LOG_NAME, this.config.cpName, 'sendBootnotification');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -217,7 +193,7 @@ export class ChargepointOcpp16Json {
    * @param payload status notification payload object
    */
   sendStatusNotification(payload: StatusNotificationPayload): Promise<void> {
-    debug('sendStatusNotification');
+    log.debug(LOG_NAME, this.config.cpName, 'sendStatusNotification');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -233,7 +209,7 @@ export class ChargepointOcpp16Json {
    * @param payload authorize payload object
    */
   sendAuthorize(payload: AuthorizePayload): Promise<AuthorizeResponse> {
-    debug('sendAuthorize');
+    log.debug(LOG_NAME, this.config.cpName, 'sendAuthorize');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -249,7 +225,7 @@ export class ChargepointOcpp16Json {
    * @param payload start transaction payload object
    */
   startTransaction(payload: StartTransactionPayload): Promise<StartTransactionResponse> {
-    debug('sendStartTransaction');
+    log.debug(LOG_NAME, this.config.cpName, 'sendStartTransaction');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -265,7 +241,7 @@ export class ChargepointOcpp16Json {
    * @param payload stop transaction payload object
    */
   stopTransaction(payload: StopTransactionPayload): Promise<StopTransactionResponse> {
-    debug('sendStopTransaction');
+    log.debug(LOG_NAME, this.config.cpName, 'sendStopTransaction');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -281,7 +257,7 @@ export class ChargepointOcpp16Json {
    * @param payload meter values payload object
    */
   meterValues(payload: MeterValuesPayload): Promise<void> {
-    debug('sendMeterValues');
+    log.debug(LOG_NAME, this.config.cpName, 'sendMeterValues');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -297,7 +273,7 @@ export class ChargepointOcpp16Json {
    * @param cb callback with signature (request: OcppRequest<GetDiagnosticsPayload>) => void
    */
   answerGetDiagnostics<T>(cb: (request: OcppRequest<GetDiagnosticsPayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerGetDiagnostics');
+    log.debug(LOG_NAME, this.config.cpName, 'answerGetDiagnostics');
     this.registeredCallbacks.set("GetDiagnostics", {cb, options});
   }
 
@@ -308,7 +284,7 @@ export class ChargepointOcpp16Json {
    * @param cb callback with signature (request: OcppRequest<UpdateFirmwarePayload>) => void
    */
   answerUpdateFirmware<T>(cb: (request: OcppRequest<UpdateFirmwarePayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerUpdateFirmware');
+    log.debug(LOG_NAME, this.config.cpName, 'answerUpdateFirmware');
     this.registeredCallbacks.set("UpdateFirmware", {cb, options});
   }
 
@@ -319,7 +295,7 @@ export class ChargepointOcpp16Json {
    * @param cb callback with signature (request: OcppRequest<ResetPayload>) => void
    */
   answerReset<T>(cb: (request: OcppRequest<ResetPayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerReset');
+    log.debug(LOG_NAME, this.config.cpName, 'answerReset');
     this.registeredCallbacks.set("Reset", {cb, options});
   }
 
@@ -330,7 +306,7 @@ export class ChargepointOcpp16Json {
    * @param cb callback with signature (request: OcppRequest<GetConfigurationPayload>) => void
    */
   answerGetConfiguration<T>(cb: (request: OcppRequest<GetConfigurationPayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerGetConfiguration');
+    log.debug(LOG_NAME, this.config.cpName, 'answerGetConfiguration');
     this.registeredCallbacks.set("GetConfiguration", {cb, options});
   }
 
@@ -341,7 +317,7 @@ export class ChargepointOcpp16Json {
    * @param cb callback with signature (request: OcppRequest<ChangeConfigurationPayload>) => void
    */
   answerChangeConfiguration<T>(cb: (request: OcppRequest<ChangeConfigurationPayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerChangeConfiguration');
+    log.debug(LOG_NAME, this.config.cpName, 'answerChangeConfiguration');
     this.registeredCallbacks.set("ChangeConfiguration", {cb, options});
   }
 
@@ -352,7 +328,7 @@ export class ChargepointOcpp16Json {
    * @param cb callback with signature (request: OcppRequest<ChangeAvailabilityPayload>) => void
    */
   answerChangeAvailability<T>(cb: (request: OcppRequest<ChangeAvailabilityPayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerChangeAvailability');
+    log.debug(LOG_NAME, this.config.cpName, 'answerChangeAvailability');
     this.registeredCallbacks.set("ChangeAvailability", {cb, options});
   }
 
@@ -363,7 +339,7 @@ export class ChargepointOcpp16Json {
    * @param cb callback with signature (request: OcppRequest<CertificateSignedPayload>) => void
    */
   answerCertificateSigned<T>(cb: (request: OcppRequest<CertificateSignedPayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerCertificateSigned');
+    log.debug(LOG_NAME, this.config.cpName, 'answerCertificateSigned');
     this.registeredCallbacks.set("CertificateSigned", {cb, options});
   }
 
@@ -375,7 +351,7 @@ export class ChargepointOcpp16Json {
    * @param options
    */
   answerRemoteStartTransaction<T>(cb: (request: OcppRequest<RemoteStartTransactionPayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerRemoteStartTransaction');
+    log.debug(LOG_NAME, this.config.cpName, 'answerRemoteStartTransaction');
     this.registeredCallbacks.set("RemoteStartTransaction", {cb, options});
   }
 
@@ -387,7 +363,7 @@ export class ChargepointOcpp16Json {
    * @param options
    */
   answerRemoteStopTransaction<T>(cb: (request: OcppRequest<RemoteStartTransactionPayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerRemoteStopTransaction');
+    log.debug(LOG_NAME, this.config.cpName, 'answerRemoteStopTransaction');
     this.registeredCallbacks.set("RemoteStopTransaction", {cb, options});
   }
 
@@ -398,7 +374,7 @@ export class ChargepointOcpp16Json {
    * @param options
    */
   answerDataTransfer<T>(cb: (request: OcppRequest<DataTransferPayload>) => void, options?: AnswerOptions<T>): void {
-    debug('answerDataTransfer');
+    log.debug(LOG_NAME, this.config.cpName, 'answerDataTransfer');
     this.registeredCallbacks.set("DataTransfer", {cb, options});
   }
 
@@ -410,7 +386,7 @@ export class ChargepointOcpp16Json {
    * @param cb callback with signature (request: OcppRequest<TriggerMessagePayload>) => void
    */
   answerTriggerMessage<T>(requestedMessage: string, cb: (request: OcppRequest<TriggerMessagePayload>) => void): void {
-    debug('answerTriggerMessage');
+    log.debug(LOG_NAME, this.config.cpName, 'answerTriggerMessage');
     this.registeredCallbacksTriggerMessage.set(requestedMessage, cb);
     this.buildTriggerMessage();
   }
@@ -423,7 +399,7 @@ export class ChargepointOcpp16Json {
    * @param cb callback with signature (request: OcppRequest<TriggerMessagePayload>) => void
    */
   answerExtendedTriggerMessage<T>(requestedMessage: string, cb: (request: OcppRequest<ExtendedTriggerMessagePayload>) => void): void {
-    debug('answerExtendedTriggerMessage');
+    log.debug(LOG_NAME, this.config.cpName, 'answerExtendedTriggerMessage');
     this.registeredCallbacksExtendedTriggerMessage.set(requestedMessage, cb);
     this.buildExtendedTriggerMessage();
   }
@@ -473,7 +449,7 @@ export class ChargepointOcpp16Json {
    * @param payload diagnostics status notification payload object
    */
   sendDiagnosticsStatusNotification(payload: DiagnosticsStatusNotificationPayload): Promise<void> {
-    debug('sendDiagnosticsStatusNotification');
+    log.debug(LOG_NAME, this.config.cpName, 'sendDiagnosticsStatusNotification');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -489,7 +465,7 @@ export class ChargepointOcpp16Json {
    * @param payload firmware status notification payload object
    */
   sendFirmwareStatusNotification(payload: FirmwareStatusNotificationPayload): Promise<void> {
-    debug('sendFirmwareStatusNotification');
+    log.debug(LOG_NAME, this.config.cpName, 'sendFirmwareStatusNotification');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -505,7 +481,7 @@ export class ChargepointOcpp16Json {
    * @param payload sign certificate payload object
    */
   sendSignCertificate(payload: SignCertificatePayload): Promise<void> {
-    debug('sendSignCertificate');
+    log.debug(LOG_NAME, this.config.cpName, 'sendSignCertificate');
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -519,45 +495,46 @@ export class ChargepointOcpp16Json {
    *
    * @param ocppMessage of any messageTypeId. This is an array of either 2, 3 or 4 elements.
    */
-  onMessage(ocppMessage: Array<number|string|object>): void {
-    debug(`received: ${JSON.stringify(ocppMessage)}`);
+  onMessage(ocppMessage: Array<number | string | object>): void {
     const messageTypeId = ocppMessage[0] as number;
-    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
     if (messageTypeId === MessageType.CALLRESULT || messageTypeId === MessageType.CALLERROR) {
-      const ocppResponse = {
-        messageTypeId: ocppMessage[0] as number,
+      this.onMessageResponse({
+        messageTypeId,
         uniqueId: ocppMessage[1] as string,
         payload: ocppMessage[2] as object
-      }
-      logger.log("ChargepointOcpp16Json:onMessage:response", this.wsConCentralSystem.cpName, ocppResponse);
-      wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, ocppResponse))
-      this.wsConCentralSystem.triggerRequestResult(ocppResponse);
+      });
     } else {
-      const ocppRequest = {
-        messageTypeId: ocppMessage[0],
-        uniqueId: ocppMessage[1],
-        action: ocppMessage[2],
-        payload: ocppMessage[3]
-      } as OcppRequest<Payload>;
-      logger.log("ChargepointOcpp16Json:onMessage:request", this.wsConCentralSystem.cpName, ocppRequest);
-      wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, ocppRequest))
-      this.registeredCallbacks.forEach(async (ocppRequestWithOptions, action) => {
-        if (action === ocppRequest.action) {
-          let wrappedRequest = ocppRequest;
-          if (ocppRequestWithOptions.options && ocppRequestWithOptions.options.requestConverter) {
-            wrappedRequest = await ocppRequestWithOptions.options.requestConverter(ocppRequest);
-          }
-          try {
-            await ocppRequestWithOptions.cb(wrappedRequest);
-          } catch (err) {
-            if (this.log(err)) { // log to remote-console
-              debug(err); // log into local console via Debug-package
-            }
-            logger.log("ChargepointOcpp16Json:onMessage", this.wsConCentralSystem.cpName, err); // send to remote-logger
-          }
-        }
+      this.onMessageRequest({
+        messageTypeId,
+        uniqueId: ocppMessage[1] as string,
+        action: ocppMessage[2] as string,
+        payload: ocppMessage[3] as object
       });
     }
+  }
+
+  onMessageResponse<T>(ocppResponse: OcppResponse<T>): void {
+    log.debug(LOG_NAME, this.config.cpName, ocppResponse);
+    this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.LOG, ocppResponse);
+    this.wsConCentralSystem.triggerRequestResult(ocppResponse);
+  }
+
+  onMessageRequest<T>(ocppRequest: OcppRequest<T>): void {
+    log.debug(LOG_NAME, this.config.cpName, ocppRequest);
+    this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.LOG, ocppRequest);
+    this.registeredCallbacks.forEach(async (ocppRequestWithOptions, action) => {
+      if (action === ocppRequest.action) {
+        let wrappedRequest = ocppRequest;
+        if (ocppRequestWithOptions.options && ocppRequestWithOptions.options.requestConverter) {
+          wrappedRequest = await ocppRequestWithOptions.options.requestConverter(ocppRequest) as OcppRequest<T>;
+        }
+        try {
+          await ocppRequestWithOptions.cb(wrappedRequest);
+        } catch (err) {
+          log.debug(LOG_NAME, this.config.cpName, err);
+        }
+      }
+    });
   }
 
   /**
@@ -566,9 +543,8 @@ export class ChargepointOcpp16Json {
    * @param req OCPP request object
    */
   sendOcpp<T, U>(req: OcppRequest<U>): Promise<T> {
-    debug(`send: ${JSON.stringify(req)}`);
-    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
-    wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, req))
+    log.debug(LOG_NAME, this.config.cpName, req);
+    this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.LOG, req);
     return this.wsConCentralSystem.trySendMessageOrDeferr(req);
   }
 
@@ -579,16 +555,26 @@ export class ChargepointOcpp16Json {
    * @param payload OCPP payload for this response
    */
   sendResponse(uniqueId: string, payload: object): void {
-    debug(`send-back: ${uniqueId} => ${JSON.stringify(payload)}`);
+    log.debug(LOG_NAME, this.config.cpName, `send-back: ${uniqueId} => ${JSON.stringify(payload)}`);
     const response = {
       messageTypeId: MessageType.CALLRESULT,
       uniqueId,
       payload
     }
-    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.wsConCentralSystem.cpName);
-    wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => wsConRemoteConsole.add(RemoteConsoleTransmissionType.LOG, response))
-    this.wsConCentralSystem.send(JSON.stringify(ocppResToArray(response)));
-    logger.log("ChargepointOcpp16Json:sendResponse", this.wsConCentralSystem.cpName, response);
+    this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.LOG, response);
+    this.wsConCentralSystem.sendResponse(ocppResToArray(response));
+    log.debug(LOG_NAME, this.config.cpName, response);
+  }
+
+  private sendMsgRemoteConsole(type: RemoteConsoleTransmissionType, payload: string | object) {
+    const wsConRemoteConsoleArr = wsConRemoteConsoleRepository.get(this.config.cpName);
+    wsConRemoteConsoleArr.forEach((wsConRemoteConsole: WSConRemoteConsole) => {
+      wsConRemoteConsole.add(type, payload)
+    });
+  }
+
+  private areAnyRemoteConsolesConnected() {
+    return wsConRemoteConsoleRepository.get(this.config.cpName).length > 0;
   }
 
   /**
@@ -596,7 +582,6 @@ export class ChargepointOcpp16Json {
    */
   close(): void {
     this.wsConCentralSystem.close();
-    this.wsConCentralSystem = null;
   }
 
   /**
@@ -631,7 +616,7 @@ export class ChargepointOcpp16Json {
   }
 
   keystore(): KeyStore {
-    return this.keyStore;
+    return this.config.keyStore;
   }
 
   /**
@@ -661,7 +646,7 @@ export class ChargepointOcpp16Json {
     });
     server.on('listening', () => {
       const addr = server.address();
-      debug(`Listening on ${JSON.stringify(addr)}`);
+      log.debug(LOG_NAME, this.config.cpName, `Listening on ${JSON.stringify(addr)}`);
     });
     const httpTerminator = createHttpTerminator({server})
     expressInit['terminate'] = (): void => httpTerminator.terminate();

@@ -1,9 +1,9 @@
 import * as http from "http";
-import Debug from 'debug';
 import {expressInit} from "./express-init";
 import createWSServerRemoteConsole from "../remote-console-connection";
+import {log} from "../log";
 
-const debug = Debug('ocpp-chargepoint-simulator:express:http');
+const LOG_NAME = 'ocpp-chargepoint-simulator:express:http';
 
 
 export default (bind: string, port: (number | string)): void => {
@@ -42,12 +42,12 @@ export default (bind: string, port: (number | string)): void => {
     const bind = typeof addr === 'string'
       ? 'pipe ' + addr
       : `(${addr.family}) ${addr.address}:${addr.port}`;
-    debug('Listening on ' + bind);
+    log.debug(LOG_NAME, '-', 'Listening on ' + bind);
   }
 
   if (typeof port === 'string') {
     server.listen(port);
-    debug('Could not start WSServerRemoteConsole as server is using pipe bind');
+    log.debug(LOG_NAME, '-', 'Could not start WSServerRemoteConsole as server is using pipe bind');
   } else {
     server.listen(port, bind);
     createWSServerRemoteConsole(bind, port);

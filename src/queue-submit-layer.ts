@@ -1,12 +1,17 @@
-import Debug from 'debug';
 import {WSConCentralSystem} from "./websocket-connection-centralsystem";
 import {ChargepointOcpp16Json} from "./chargepoint";
 import {OcppRequest, OcppResponse, Payload} from "./ocpp1_6";
 import * as WebSocket from "ws";
-import {logger} from './http-post-logger';
+import {log} from "./log";
+import {Config} from "./config";
 import Timeout = NodeJS.Timeout;
 
-const debug = Debug('ocpp-chargepoint-simulator:simulator:FailSafeConnection');
+const LOG_NAME = 'ocpp-chargepoint-simulator:simulator:FailSafeConnection';
+
+/** Counter to give each instance of ChargepointOcpp16Json a unique ID */
+// this is needed as the front-end knows only one (and only exactly one) instance, so the FE need to find the
+// latest instance (using the highest ID)
+let connectCounter = 0;
 
 /**
  * Converts an object of type OcppRequest (TypeScript) into an OCPP request (protocol) array.
@@ -34,9 +39,9 @@ interface DefferedMessage<T> {
 }
 
 /**
- *
+ * Handles queuing and re-submitting ocpp commands in case of connection drops.
  */
-export class FailSafeConnectionAdapter {
+export class QueueSubmitLayer {
   /**
    * Defines the time in milli seconds for the request-response timeout of OCPP messages.
    */
@@ -53,55 +58,52 @@ export class FailSafeConnectionAdapter {
 
   private _wsConCentralSystem: WSConCentralSystem;
 
-  set wsConCentralSystem(wsConCentralSystem: WSConCentralSystem) {
-    debug("wsConCentralSystem");
-    this._wsConCentralSystem = wsConCentralSystem;
-    this._wsConCentralSystem.failSafeConnectionAdapter = this;
+  constructor(private readonly _chargepointOcpp16Json: ChargepointOcpp16Json, private readonly _config: Config) {
   }
 
-  get wsConCentralSystem(): WSConCentralSystem {
+  public get chargepointOcpp16Json() {
+    return this._chargepointOcpp16Json;
+  }
+
+  public get wsConCentralSystem() {
     return this._wsConCentralSystem;
   }
 
-  get id(): number {
-    return this.wsConCentralSystem.id;
+  public get readyState() {
+    return this._wsConCentralSystem.ws.readyState;
   }
 
-  get api(): ChargepointOcpp16Json {
-    return this.wsConCentralSystem.api;
+  public get config() {
+    return this._config;
   }
 
-  get readyState(): number {
-    return this.wsConCentralSystem.ws.readyState;
+  public connect(): Promise<void> {
+    this._wsConCentralSystem = new WSConCentralSystem(connectCounter++, this, this._config);
+    return this._wsConCentralSystem.connect();
   }
 
-  get cpName(): string {
-    return this.wsConCentralSystem.cpName;
+  public close(): void {
+    this._wsConCentralSystem.close();
+    this._wsConCentralSystem = null;
   }
 
-  get url(): string {
-    return this.wsConCentralSystem.url;
-  }
-
-  connect(): Promise<void> {
-    return this.wsConCentralSystem.connect();
-  }
-
-  send(data: string): void {
-    this.wsConCentralSystem.send(data);
-  }
-
-  close(): void {
-    this.wsConCentralSystem.close();
-  }
-
-  onClose(): void {
+  /**
+   * Called from the underlaying WebSocket layer in case the connections closes / gets closed.
+   */
+  public onClose(): void {
     if (this.isCurrentlyRequestNotAnswered) {
       clearTimeout(this.timeoutHandle);
       this.deferredMessageQueue.unshift({startResponseHandling: this.currentStartResponseHandling});
     }
     this.registeredOpenRequest = null;
     this.isCurrentlyRequestNotAnswered = false;
+    if (this._chargepointOcpp16Json.onCloseCb) {
+      this._chargepointOcpp16Json.onCloseCb();
+    }
+  }
+
+  public onMessage(ocppMessage: Array<number | string | object>): void {
+    this._chargepointOcpp16Json.onMessage(ocppMessage);
   }
 
   /**
@@ -109,7 +111,7 @@ export class FailSafeConnectionAdapter {
    *
    * @param resp OCPP response
    */
-  triggerRequestResult<T>(resp: OcppResponse<T>): void {
+  public triggerRequestResult<T>(resp: OcppResponse<T>): void {
     if (!this.registeredOpenRequest) {
       throw Error(`Received response with id ${resp.uniqueId} but not result was registered.`);
     }
@@ -127,7 +129,7 @@ export class FailSafeConnectionAdapter {
    * @param req OCPP request
    * @param next callback function to call when the response arrived
    */
-  registerRequest<T>(req: OcppRequest<T>, next: (resp: Payload) => void): void {
+  public registerRequest<T>(req: OcppRequest<T>, next: (resp: Payload) => void): void {
     if (this.registeredOpenRequest) {
       throw Error(`Tried to register request with id ${req.uniqueId} but id ${this.registeredOpenRequest.request.uniqueId} is already registered.`);
     }
@@ -142,22 +144,29 @@ export class FailSafeConnectionAdapter {
    *
    * @param data string to be sent. Must be a stringified OCPP request array.
    */
-  trySendMessageOrDeferr<T, U>(req: OcppRequest<U>): Promise<T> {
+  public trySendMessageOrDeferr<T, U>(req: OcppRequest<U>): Promise<T> {
     return new Promise((resolve: (T) => void, reject: (string) => void) => {
+      /*
+       * Function to send an OCPP request to the underlaying websocket layer and monitor it's success withing a given timeout
+       */
       const startResponseHandling = () => {
+        // timeout handling
         this.timeoutHandle = setTimeout(() => {
           this.processDeferredMessages(); // Not sure, if we should proceed sending messages, if we just got a timeout and not an actual response.
           reject(`Timeout waiting for ${JSON.stringify(req)}`)
         }, this.RESPONSE_TIMEOUT);
+        // response handling
         this.registerRequest(req, (resp) => {
           this.processDeferredMessages();
           clearTimeout(this.timeoutHandle);
           resolve(resp);
         });
-        this.sendData(ocppReqToArray(req));
+        // actual request
+        this.sendRequest(ocppReqToArray(req));
       }
-      if (this.isCurrentlyRequestNotAnswered === true || this.readyState !== WebSocket.OPEN) {
-        debug(`sendToWebsocket, queueSize=${this.deferredMessageQueue.length}`);
+      /* END */
+      if (this.isCurrentlyRequestNotAnswered === true || this._wsConCentralSystem.ws.readyState !== WebSocket.OPEN) {
+        log.debug(LOG_NAME, this._config.cpName, `sendToWebsocket, queueSize=${this.deferredMessageQueue.length}`);
         this.deferredMessageQueue.unshift({startResponseHandling});
       } else {
         this.currentStartResponseHandling = startResponseHandling;
@@ -170,11 +179,11 @@ export class FailSafeConnectionAdapter {
   /**
    * When a message was answered, this checks if there are deferred messages waiting to be sent.
    */
-  processDeferredMessages(): void {
-    if (this.readyState === WebSocket.OPEN) {
+  public processDeferredMessages(): void {
+    if (this._wsConCentralSystem.ws.readyState === WebSocket.OPEN) {
       this.isCurrentlyRequestNotAnswered = this.deferredMessageQueue.length > 0;
       if (this.isCurrentlyRequestNotAnswered === true) {
-        debug(`processDeferredMessages, queueSize=${this.deferredMessageQueue.length}`);
+        log.debug(LOG_NAME, this._config.cpName, `processDeferredMessages, queueSize=${this.deferredMessageQueue.length}`);
         const data = this.deferredMessageQueue.pop();
         this.currentStartResponseHandling = data.startResponseHandling;
         data.startResponseHandling();
@@ -183,18 +192,23 @@ export class FailSafeConnectionAdapter {
   }
 
   /**
-   * Send the data to the underlaying websocket connection to the central system.
+   * Send a OCPP request to the underlaying websocket connection to the central system.
    *
    * @param data OcppRequest array
    */
-  private sendData(data: Array<number | string | object>): void {
-    this.wsConCentralSystem.send(JSON.stringify(data));
-    logger.log("ChargepointOcpp16Json:sendData", this.wsConCentralSystem.cpName, {
-      messageTypeId: data[0],
-      uniqueId: data[1],
-      action: data[2],
-      payload: data[3]
-    });
+  private sendRequest(data: Array<number | string | object>): void {
+    this._wsConCentralSystem.send(JSON.stringify(data));
   }
 
+  /**
+   * Send a OCPP response to the underlaying websocket connection to the central system.
+   *
+   * @param data OcppRequest array
+   */
+  public sendResponse(data: Array<number | string | object>): void {
+    if (this._wsConCentralSystem.ws.readyState !== WebSocket.OPEN) {
+      throw Error(`WebSocket connection not open.`);
+    }
+    this._wsConCentralSystem.send(JSON.stringify(data));
+  }
 }

@@ -1,4 +1,3 @@
-import Debug from 'debug';
 import * as express from 'express';
 import * as path from 'path';
 import * as cookieParser from 'cookie-parser';
@@ -7,8 +6,7 @@ import * as logger from 'morgan';
 import {htmlRouter} from './routes/html';
 import {cpRouter} from './routes/cp';
 import {adminRouter} from './routes/admin';
-
-const debug = Debug('ocpp-chargepoint-simulator:express:init');
+import {log} from "../log";
 
 const expressInit = express();
 
@@ -17,7 +15,7 @@ expressInit.set('views', path.join(__dirname, '../..', 'views'));
 expressInit.set('view engine', 'ejs');
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-expressInit.use(logger('combined', { stream: { write: msg => debug(msg.trimEnd()) } }));
+expressInit.use(logger('combined', {stream: {write: msg => log.debug('ocpp-chargepoint-simulator:express:init', '-', msg.trimEnd())}}));
 expressInit.use(express.json());
 expressInit.use(express.urlencoded({extended: false}));
 expressInit.use(express.raw({type: "application/javascript"}));

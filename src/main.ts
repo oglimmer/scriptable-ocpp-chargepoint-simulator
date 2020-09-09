@@ -1,20 +1,17 @@
-import Debug from 'debug';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as _eval from 'eval';
 import {chargepointFactory} from './chargepoint';
 import http from './http/http';
-import {logger} from "./http-post-logger";
 import axios from 'axios';
 import * as FormData from 'form-data';
+import {log} from "./log";
 
-const debug = Debug('ocpp-chargepoint-simulator:main');
-
-logger.log("ChargepointOcpp16Json:main", null, 'app started');
+const LOG_NAME = 'ocpp-chargepoint-simulator:main';
 
 process.on('uncaughtException', function (err) {
   console.error((err && err.stack) ? err.stack : err);
-  logger.log("ChargepointOcpp16Json:main", null, err);
+  log.debug(LOG_NAME, '-', err);
 });
 
 function normalizeHost(val = 'localhost'): string {
@@ -33,9 +30,14 @@ function normalizePort(val = '3000'): number | string {
 }
 
 if (process.argv[2]) {
-  debug('Batch mode.');
+  log.configure({
+    remote: true,
+    stdout: true,
+    stdoutLogger: false
+  });
+  log.debug(LOG_NAME, '-', 'Batch mode.');
 
-  let javaScript : string;
+  let javaScript: string;
   if (process.argv[2] == '--stdin') {
     javaScript = fs.readFileSync(0, 'utf-8');
   } else {
@@ -47,24 +49,26 @@ if (process.argv[2]) {
     javaScript + "\n" +
     "};"
   }
-  debug(javaScript);
+  log.debug(LOG_NAME, '-', javaScript);
 
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   (async () => {
     try {
       const evalResp = _eval(javaScript, 'execute', {}, true);
       axios["FormData"] = FormData; // to post multipart/form-data FormData lib is needed, make it easy to access here
-      await evalResp(chargepointFactory, logger, axios);
+      await evalResp(chargepointFactory, log, axios);
     } catch (e) {
-      debug(e);
-      if (!debug.enabled) {
-        console.error(e);
-      }
+      log.debug(LOG_NAME, '-', e);
     }
   })();
 
 } else {
-  debug('Server mode.');
+  log.configure({
+    remote: false,
+    stdout: false,
+    stdoutLogger: true
+  });
+  log.debug(LOG_NAME, '-', 'Server mode.');
 
   http(normalizeHost(process.env.BIND), normalizePort(process.env.PORT));
 }
