@@ -70,7 +70,7 @@ export class QueueSubmitLayer {
   }
 
   public get readyState() {
-    return this._wsConCentralSystem.ws?.readyState;
+    return this._wsConCentralSystem?.ws?.readyState;
   }
 
   public get config() {
