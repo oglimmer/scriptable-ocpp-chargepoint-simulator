@@ -49,12 +49,12 @@ export class QueueSubmitLayer {
 
   /** OCPP doesn't allow to send more than 1 message at a time. This queues messages until the last is answered. */
   private readonly deferredMessageQueue: Array<DefferedMessage<Payload>> = [];
-  /** Determines if a new message can be sent  */
-  private isCurrentlyRequestNotAnswered = false;
-  /** Holds the request currently not answered with a response. Within a tick this might be out of sync with isCurrentlyRequestNotAnswered  */
+  /** Holds the request currently not answered with a response. */
   private registeredOpenRequest: MessageListenerElement<Payload>;
+  /* Timeout handle for current request */
   private timeoutHandle: Timeout;
-  private currentStartResponseHandling;
+  /* Function to start a request, handle the response. This means, it must handle the timeout. Must call this.registerRequest(...) to handle the response and finally must do the actual request via  this.sendRequest(...); */
+  private currentStartResponseHandling: () => void;
 
   private _wsConCentralSystem: WSConCentralSystem;
 
@@ -91,12 +91,11 @@ export class QueueSubmitLayer {
    * Called from the underlaying WebSocket layer in case the connections closes / gets closed.
    */
   public onClose(): void {
-    if (this.isCurrentlyRequestNotAnswered) {
+    if (this.registeredOpenRequest) {
       clearTimeout(this.timeoutHandle);
       this.deferredMessageQueue.unshift({startResponseHandling: this.currentStartResponseHandling});
     }
     this.registeredOpenRequest = null;
-    this.isCurrentlyRequestNotAnswered = false;
     if (this._chargepointOcpp16Json.onCloseCb) {
       this._chargepointOcpp16Json.onCloseCb();
     }
@@ -129,7 +128,7 @@ export class QueueSubmitLayer {
    * @param req OCPP request
    * @param next callback function to call when the response arrived
    */
-  public registerRequest<T>(req: OcppRequest<T>, next: (resp: Payload) => void): void {
+  private registerRequest<T>(req: OcppRequest<T>, next: (resp: Payload) => void): void {
     if (this.registeredOpenRequest) {
       throw Error(`Tried to register request with id ${req.uniqueId} but id ${this.registeredOpenRequest.request.uniqueId} is already registered.`);
     }
@@ -140,11 +139,11 @@ export class QueueSubmitLayer {
   }
 
   /**
-   * Tries to send a message (data) via the WebSocket to the central system. It might deferr this, if an OCPP message is currenlty in progress.
+   * Tries to send a message (data) via the WebSocket to the central system. It might defer this, if an OCPP message is currently in progress.
    *
    * @param data string to be sent. Must be a stringified OCPP request array.
    */
-  public trySendMessageOrDeferr<T, U>(req: OcppRequest<U>): Promise<T> {
+  public trySendMessageOrDefer<T, U>(req: OcppRequest<U>): Promise<T> {
     return new Promise((resolve: (T) => void, reject: (string) => void) => {
       /*
        * Function to send an OCPP request to the underlaying websocket layer and monitor it's success withing a given timeout
@@ -165,13 +164,12 @@ export class QueueSubmitLayer {
         this.sendRequest(ocppReqToArray(req));
       }
       /* END */
-      if (this.isCurrentlyRequestNotAnswered === true || this._wsConCentralSystem.ws.readyState !== WebSocket.OPEN) {
-        log.debug(LOG_NAME, this._config.cpName, `sendToWebsocket, queueSize=${this.deferredMessageQueue.length}`);
+      if (this.registeredOpenRequest || this._wsConCentralSystem.ws.readyState !== WebSocket.OPEN) {
+        log.debug(LOG_NAME, this._config.cpName, `Defer sendMessage. Before add queue size=${this.deferredMessageQueue.length}`);
         this.deferredMessageQueue.unshift({startResponseHandling});
       } else {
         this.currentStartResponseHandling = startResponseHandling;
         startResponseHandling();
-        this.isCurrentlyRequestNotAnswered = true;
       }
     })
   }
@@ -180,14 +178,11 @@ export class QueueSubmitLayer {
    * When a message was answered, this checks if there are deferred messages waiting to be sent.
    */
   public processDeferredMessages(): void {
-    if (this._wsConCentralSystem.ws.readyState === WebSocket.OPEN) {
-      this.isCurrentlyRequestNotAnswered = this.deferredMessageQueue.length > 0;
-      if (this.isCurrentlyRequestNotAnswered === true) {
-        log.debug(LOG_NAME, this._config.cpName, `processDeferredMessages, queueSize=${this.deferredMessageQueue.length}`);
-        const data = this.deferredMessageQueue.pop();
-        this.currentStartResponseHandling = data.startResponseHandling;
-        data.startResponseHandling();
-      }
+    if (!this.registeredOpenRequest && this._wsConCentralSystem.ws.readyState === WebSocket.OPEN && this.deferredMessageQueue.length > 0) {
+      log.debug(LOG_NAME, this._config.cpName, `Pop queued message. Before pop queue size=${this.deferredMessageQueue.length}`);
+      const data = this.deferredMessageQueue.pop();
+      this.currentStartResponseHandling = data.startResponseHandling;
+      data.startResponseHandling();
     }
   }
 

@@ -543,10 +543,10 @@ export class ChargepointOcpp16Json {
    *
    * @param req OCPP request object
    */
-  sendOcpp<T, U>(req: OcppRequest<U>): Promise<T> {
+  private sendOcpp<T, U>(req: OcppRequest<U>): Promise<T> {
     log.debug(LOG_NAME_OCPP, this.config.cpName, req);
     this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.LOG, req);
-    return this.wsConCentralSystem.trySendMessageOrDeferr(req);
+    return this.wsConCentralSystem.trySendMessageOrDefer(req);
   }
 
   /**
