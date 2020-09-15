@@ -45,6 +45,7 @@ import {Config} from "./config";
 
 
 const LOG_NAME = 'ocpp-chargepoint-simulator:simulator:ChargepointOcpp16Json';
+const LOG_NAME_OCPP = 'ocpp-chargepoint-simulator:simulator:ChargepointOcpp16Json:OCPP';
 
 /**
  * Generates a UUID v4 - e.g. 550e8400-e29b-11d4-a716-446655440000
@@ -514,13 +515,13 @@ export class ChargepointOcpp16Json {
   }
 
   onMessageResponse<T>(ocppResponse: OcppResponse<T>): void {
-    log.debug(LOG_NAME, this.config.cpName, ocppResponse);
+    log.debug(LOG_NAME_OCPP, this.config.cpName, ocppResponse);
     this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.LOG, ocppResponse);
     this.wsConCentralSystem.triggerRequestResult(ocppResponse);
   }
 
   onMessageRequest<T>(ocppRequest: OcppRequest<T>): void {
-    log.debug(LOG_NAME, this.config.cpName, ocppRequest);
+    log.debug(LOG_NAME_OCPP, this.config.cpName, ocppRequest);
     this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.LOG, ocppRequest);
     this.registeredCallbacks.forEach(async (ocppRequestWithOptions, action) => {
       if (action === ocppRequest.action) {
@@ -543,7 +544,7 @@ export class ChargepointOcpp16Json {
    * @param req OCPP request object
    */
   sendOcpp<T, U>(req: OcppRequest<U>): Promise<T> {
-    log.debug(LOG_NAME, this.config.cpName, req);
+    log.debug(LOG_NAME_OCPP, this.config.cpName, req);
     this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.LOG, req);
     return this.wsConCentralSystem.trySendMessageOrDeferr(req);
   }
@@ -563,7 +564,7 @@ export class ChargepointOcpp16Json {
     }
     this.sendMsgRemoteConsole(RemoteConsoleTransmissionType.LOG, response);
     this.wsConCentralSystem.sendResponse(ocppResToArray(response));
-    log.debug(LOG_NAME, this.config.cpName, response);
+    log.debug(LOG_NAME_OCPP, this.config.cpName, response);
   }
 
   private sendMsgRemoteConsole(type: RemoteConsoleTransmissionType, payload: string | object) {

@@ -20,7 +20,7 @@ export class WSConRemoteConsole {
   constructor(readonly ws: WebSocket, readonly cpName: string, readonly remoteHost, readonly userAgent) {
     ws.on('message', this.onMessage.bind(this));
     ws.on('close', this.onClose.bind(this));
-    log.debug(LOG_NAME_REMOTE_CONSOLE, cpName, `Registered ${cpName} from ${remoteHost} using ${userAgent}`);
+    log.debug(LOG_NAME_REMOTE_CONSOLE, cpName, `Registered ${cpName} from ${JSON.stringify(remoteHost)} using ${userAgent}`);
   }
 
   onMessage(message): void {
