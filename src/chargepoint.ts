@@ -499,11 +499,13 @@ export class ChargepointOcpp16Json {
   onMessage(ocppMessage: Array<number | string | object>): void {
     const messageTypeId = ocppMessage[0] as number;
     if (messageTypeId === MessageType.CALLRESULT || messageTypeId === MessageType.CALLERROR) {
-      this.onMessageResponse({
-        messageTypeId,
-        uniqueId: ocppMessage[1] as string,
-        payload: ocppMessage[2] as object
-      });
+      if (ocppMessage[1]) { // this protects against invalid messages
+        this.onMessageResponse({
+          messageTypeId,
+          uniqueId: ocppMessage[1] as string,
+          payload: ocppMessage[2] as object
+        });
+      }
     } else {
       this.onMessageRequest({
         messageTypeId,
