@@ -152,11 +152,16 @@ export class ChargepointOcpp16Json {
     return this.wsConCentralSystem.connect();
   }
 
+  /**
+   * Re-connects the WebSocket to the central system. No OCPP happening.
+   */
   reConnect(): Promise<void> {
     log.debug(LOG_NAME, this.config.cpName, 'reConnect');
     this.wsConCentralSystem.close();
-    return this.wsConCentralSystem.connect();
+    // wait after re-connect, as it takes a couple of millies until onClose() in queue-submit-layer is called
+    return this.wsConCentralSystem.connect().then(() => this.sleep(500));
   }
+
   /**
    * Sends a OCPP heartbeat message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
