@@ -21,7 +21,7 @@ cp.answerUpdateFirmware(async (request) => {
   await cp.sleep(5000);
   await cp.sendFirmwareStatusNotification({ status: 'Downloading' });
   const file = await cp.ftpDownload(request.payload.location);
-  logger.debug('file downloaded to: ' + file);
+  cp.log('file downloaded to: ' + file);
   await cp.sendFirmwareStatusNotification({ status: 'Downloaded' });
   await cp.sleep(5000);
   await cp.sendFirmwareStatusNotification({ status: 'Installing' });
@@ -30,7 +30,8 @@ cp.answerUpdateFirmware(async (request) => {
 });
 cp.answerReset(async (request) => {
   cp.sendResponse(request.uniqueId, { status: 'Accepted' });
-  logger.debug('RESET ***boing-boing-boing*** ' + request.payload.type);
+  await cp.reConnect();
+  cp.log('RESET ***boing-boing-boing*** ' + request.payload.type);
   await cp.sendBootnotification({ chargePointVendor: 'vendor', chargePointModel: '1' });
 });
 const configurationStore = [];
