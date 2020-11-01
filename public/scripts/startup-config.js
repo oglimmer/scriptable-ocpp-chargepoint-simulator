@@ -1,8 +1,15 @@
 define(function() {
   return `
 const bootResp = await cp.sendBootnotification({ chargePointVendor: 'vendor', chargePointModel: '1' });
-await cp.sendHeartbeat();
-const heartbeatInterval = setInterval(() => cp.sendHeartbeat(), bootResp.interval * 1000);
+const heartbeatFunction = async () => {
+  try {
+    await cp.sendHeartbeat();
+  } catch (e) {
+    console.log(e);
+  }
+  heartbeatInterval = setTimeout(heartbeatFunction, bootResp.interval * 1000);
+}
+let heartbeatInterval = setTimeout(heartbeatFunction, 1000);
 cp.onClose(() => clearInterval(heartbeatInterval));
 await cp.sendStatusNotification({ connectorId: 0, errorCode: 'NoError', status: 'Available' });
 await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Available' });
