@@ -79,7 +79,6 @@ export class WSConCentralSystem {
       this.sendOpenMsgRemoteConsole();
       resolve();
       this.promiseResolved = true;
-      this.failSafeConnectionAdapter.processDeferredMessages();
     };
   }
 

@@ -34,10 +34,6 @@ interface MessageListenerElement<T> {
   next(resp: Payload): void;
 }
 
-interface DefferedMessage<T> {
-  startResponseHandling(): void;
-}
-
 /**
  * Handles queuing and re-submitting ocpp commands in case of connection drops.
  */
@@ -47,18 +43,19 @@ export class QueueSubmitLayer {
    */
   private readonly RESPONSE_TIMEOUT = process.env.RESPONSE_TIMEOUT ? parseInt(process.env.RESPONSE_TIMEOUT) : 15000;
 
-  /** OCPP doesn't allow to send more than 1 message at a time. This queues messages until the last is answered. */
-  private readonly deferredMessageQueue: Array<DefferedMessage<Payload>> = [];
-  /** Holds the request currently not answered with a response. */
-  private registeredOpenRequest: MessageListenerElement<Payload>;
-  /* Timeout handle for current request */
-  private timeoutHandle: Timeout;
+  /** Holds the requests currently not answered with a response. */
+  private registeredOpenRequest: Map<string, MessageListenerElement<Payload>>;
+  /* Timeout handle for requests */
+  private timeoutHandle: Map<string, Timeout>;
   /* Function to start a request, handle the response. This means, it must handle the timeout. Must call this.registerRequest(...) to handle the response and finally must do the actual request via  this.sendRequest(...); */
-  private currentStartResponseHandling: () => void;
+  private currentStartResponseHandling: Map<string, () => void>;
 
   private _wsConCentralSystem: WSConCentralSystem;
 
   constructor(private readonly _chargepointOcpp16Json: ChargepointOcpp16Json, private readonly _config: Config) {
+    this.registeredOpenRequest = new Map();
+    this.timeoutHandle = new Map();
+    this.currentStartResponseHandling = new Map();
   }
 
   public get chargepointOcpp16Json() {
@@ -91,11 +88,10 @@ export class QueueSubmitLayer {
    * Called from the underlaying WebSocket layer in case the connections closes / gets closed.
    */
   public onClose(): void {
-    if (this.registeredOpenRequest) {
-      clearTimeout(this.timeoutHandle);
-      this.deferredMessageQueue.unshift({startResponseHandling: this.currentStartResponseHandling});
-    }
-    this.registeredOpenRequest = null;
+    this.timeoutHandle.forEach(to => clearTimeout(to));
+    this.timeoutHandle.clear();
+    this.registeredOpenRequest.clear();
+    this.currentStartResponseHandling.clear();
     if (this._chargepointOcpp16Json.onCloseCb) {
       this._chargepointOcpp16Json.onCloseCb();
     }
@@ -111,14 +107,11 @@ export class QueueSubmitLayer {
    * @param resp OCPP response
    */
   public triggerRequestResult<T>(resp: OcppResponse<T>): void {
-    if (!this.registeredOpenRequest) {
-      throw Error(`Received response with id ${resp.uniqueId} but not result was registered.`);
+    if (!this.registeredOpenRequest.has(resp.uniqueId)) {
+      throw Error(`Received response with id ${resp.uniqueId} but not result was registered for this uniqueId.`);
     }
-    if (resp.uniqueId !== this.registeredOpenRequest.request.uniqueId) {
-      throw Error(`Received response with id ${resp.uniqueId} but expected id ${this.registeredOpenRequest.request.uniqueId}`);
-    }
-    const openRequestToTrigger = this.registeredOpenRequest;
-    this.registeredOpenRequest = null;
+    const openRequestToTrigger = this.registeredOpenRequest.get(resp.uniqueId);
+    this.registeredOpenRequest.delete(resp.uniqueId);
     openRequestToTrigger.next(resp.payload); // this might register a new Request, thus it needs to be set to null before
   }
 
@@ -129,13 +122,13 @@ export class QueueSubmitLayer {
    * @param next callback function to call when the response arrived
    */
   private registerRequest<T>(req: OcppRequest<T>, next: (resp: Payload) => void): void {
-    if (this.registeredOpenRequest) {
-      throw Error(`Tried to register request with id ${req.uniqueId} but id ${this.registeredOpenRequest.request.uniqueId} is already registered.`);
+    if (this.registeredOpenRequest.has(req.uniqueId)) {
+      throw Error(`Tried to register request with id ${req.uniqueId} but this uniqueId is already registered.`);
     }
-    this.registeredOpenRequest = {
+    this.registeredOpenRequest.set(req.uniqueId, {
       request: req,
       next: next
-    };
+    });
   }
 
   /**
@@ -150,40 +143,26 @@ export class QueueSubmitLayer {
        */
       const startResponseHandling = () => {
         // timeout handling
-        this.timeoutHandle = setTimeout(() => {
-          this.processDeferredMessages(); // Not sure, if we should proceed sending messages, if we just got a timeout and not an actual response.
+        const timeoutRef = setTimeout(() => {
           reject(`Timeout waiting for ${JSON.stringify(req)}`)
         }, this.RESPONSE_TIMEOUT);
+        this.timeoutHandle.set(req.uniqueId, timeoutRef);
         // response handling
         this.registerRequest(req, (resp) => {
-          this.processDeferredMessages();
-          clearTimeout(this.timeoutHandle);
+          clearTimeout(timeoutRef);
           resolve(resp);
         });
         // actual request
         this.sendRequest(ocppReqToArray(req));
       }
       /* END */
-      if (this.registeredOpenRequest || this._wsConCentralSystem.ws.readyState !== WebSocket.OPEN) {
-        log.debug(LOG_NAME, this._config.cpName, `Defer sendMessage. Before add queue size=${this.deferredMessageQueue.length}`);
-        this.deferredMessageQueue.unshift({startResponseHandling});
+      if (this._wsConCentralSystem.ws.readyState !== WebSocket.OPEN) {
+        log.debug(LOG_NAME, this._config.cpName, `Connection not open. Unable to send message ${JSON.stringify(req)}`);
       } else {
-        this.currentStartResponseHandling = startResponseHandling;
+        this.currentStartResponseHandling.set(req.uniqueId, startResponseHandling);
         startResponseHandling();
       }
     })
-  }
-
-  /**
-   * When a message was answered, this checks if there are deferred messages waiting to be sent.
-   */
-  public processDeferredMessages(): void {
-    if (!this.registeredOpenRequest && this._wsConCentralSystem.ws.readyState === WebSocket.OPEN && this.deferredMessageQueue.length > 0) {
-      log.debug(LOG_NAME, this._config.cpName, `Pop queued message. Before pop queue size=${this.deferredMessageQueue.length}`);
-      const data = this.deferredMessageQueue.pop();
-      this.currentStartResponseHandling = data.startResponseHandling;
-      data.startResponseHandling();
-    }
   }
 
   /**
