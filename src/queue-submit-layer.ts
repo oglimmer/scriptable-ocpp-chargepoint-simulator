@@ -4,7 +4,7 @@ import {OcppRequest, OcppResponse, Payload} from "./ocpp1_6";
 import * as WebSocket from "ws";
 import {log} from "./log";
 import {Config} from "./config";
-import Timeout = NodeJS.Timeout;
+
 
 const LOG_NAME = 'ocpp-chargepoint-simulator:simulator:FailSafeConnection';
 
@@ -45,17 +45,11 @@ export class QueueSubmitLayer {
 
   /** Holds the requests currently not answered with a response. */
   private registeredOpenRequest: Map<string, MessageListenerElement<Payload>>;
-  /* Timeout handle for requests */
-  private timeoutHandle: Map<string, Timeout>;
-  /* Function to start a request, handle the response. This means, it must handle the timeout. Must call this.registerRequest(...) to handle the response and finally must do the actual request via  this.sendRequest(...); */
-  private currentStartResponseHandling: Map<string, () => void>;
 
   private _wsConCentralSystem: WSConCentralSystem;
 
   constructor(private readonly _chargepointOcpp16Json: ChargepointOcpp16Json, private readonly _config: Config) {
     this.registeredOpenRequest = new Map();
-    this.timeoutHandle = new Map();
-    this.currentStartResponseHandling = new Map();
   }
 
   public get chargepointOcpp16Json() {
@@ -88,10 +82,7 @@ export class QueueSubmitLayer {
    * Called from the underlaying WebSocket layer in case the connections closes / gets closed.
    */
   public onClose(): void {
-    this.timeoutHandle.forEach(to => clearTimeout(to));
-    this.timeoutHandle.clear();
     this.registeredOpenRequest.clear();
-    this.currentStartResponseHandling.clear();
     if (this._chargepointOcpp16Json.onCloseCb) {
       this._chargepointOcpp16Json.onCloseCb();
     }
@@ -146,7 +137,6 @@ export class QueueSubmitLayer {
         const timeoutRef = setTimeout(() => {
           reject(`Timeout waiting for ${JSON.stringify(req)}`)
         }, this.RESPONSE_TIMEOUT);
-        this.timeoutHandle.set(req.uniqueId, timeoutRef);
         // response handling
         this.registerRequest(req, (resp) => {
           clearTimeout(timeoutRef);
@@ -159,7 +149,6 @@ export class QueueSubmitLayer {
       if (this._wsConCentralSystem.ws.readyState !== WebSocket.OPEN) {
         log.debug(LOG_NAME, this._config.cpName, `Connection not open. Unable to send message ${JSON.stringify(req)}`);
       } else {
-        this.currentStartResponseHandling.set(req.uniqueId, startResponseHandling);
         startResponseHandling();
       }
     })
