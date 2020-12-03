@@ -46,7 +46,7 @@
     "exec": "npm start",
     "ext": "ts"
   },
-  "author": "Electric Miles <mark@electricmiles.co.uk>",
+  "author": "Electric Miles <simon@electricmiles.co.uk>",
   "license": "Apache-2.0",
   "dependencies": {
     "axios": "^0.19.2",
