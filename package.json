@@ -32,7 +32,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
-    "docs": "npx typedoc --out public/docs --inputFiles src/ --exclude 'src/main.ts' --exclude 'src/websocket-connection-centralsystem.ts' --exclude 'src/ftp.ts' --exclude 'src/http/*' --exclude 'src/remote-console-connection.ts' --exclude 'src/state-service.ts' --exclude 'src/http-post-logger-config.ts' --exclude 'src/http-post-logger.ts'"
+    "docs": "npx typedoc --out public/docs --inputFiles src/ --exclude 'src/main.ts' --exclude 'src/websocket-connection-centralsystem.ts' --exclude 'src/ftp.ts' --exclude 'src/http/*' --exclude 'src/remote-console-connection.ts' --exclude 'src/state-service.ts' --exclude 'src/http-post-logger-config.ts' --exclude 'src/http-post-logger.ts'",
+    "tsc": "tsc -p tsconfig.release.json"
   },
   "nodemonConfig": {
     "ignore": [
