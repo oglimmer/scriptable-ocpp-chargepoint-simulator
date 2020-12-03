@@ -1,6 +1,7 @@
 {
   "name": "scriptable-ocpp-chargepoint-simulator",
   "version": "0.0.1",
+  "type": "module",
   "description": "Fully scriptable OCCP 1.6 JSON chargepoint simulator",
   "engines": {
     "node": ">= 10.13"
