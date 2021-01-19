@@ -43,8 +43,12 @@ export class WSConCentralSystem {
   }
 
   public close(): void {
-    log.debug(LOG_NAME, this.config.cpName, `Close requested. [${this.id}]`);
-    this._ws.close();
+    if (this._ws.readyState === WebSocket.OPEN) {
+      log.debug(LOG_NAME, this.config.cpName, `Close requested. [${this.id}]`);
+      this._ws.close();
+    } else {
+      log.debug(LOG_NAME, this.config.cpName, `Close requested but WS was not open. [${this.id}]`);
+    }
   }
 
   private errorHandler(reject: (reason?: any) => void) {
