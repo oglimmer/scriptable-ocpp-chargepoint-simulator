@@ -58,6 +58,7 @@ if (process.argv[2]) {
       axios["FormData"] = FormData; // to post multipart/form-data FormData lib is needed, make it easy to access here
       await evalResp(chargepointFactory, log, axios);
     } catch (e) {
+      console.log(e);
       log.debug(LOG_NAME, '-', e);
     }
   })();
