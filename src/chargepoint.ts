@@ -158,8 +158,17 @@ export class ChargepointOcpp16Json {
   reConnect(): Promise<void> {
     log.debug(LOG_NAME, this.config.cpName, 'reConnect');
     this.wsConCentralSystem.close();
-    // wait after re-connect, as it takes a couple of millies until onClose() in queue-submit-layer is called
-    return this.wsConCentralSystem.connect().then(() => this.sleep(500));
+    return new Promise<void>((resolve, reject) => {
+      // wait before re-connect, as it takes a couple of millies until onClose() in queue-submit-layer is called
+      setTimeout(async () => {
+        try {
+          await this.wsConCentralSystem.connect();
+          resolve();
+        } catch(err) {
+          reject(err);
+        }
+      }, 1000);
+    })
   }
 
   /**

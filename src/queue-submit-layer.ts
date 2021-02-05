@@ -146,7 +146,7 @@ export class QueueSubmitLayer {
         this.sendRequest(ocppReqToArray(req));
       }
       /* END */
-      if (this._wsConCentralSystem.ws.readyState !== WebSocket.OPEN) {
+      if (!this._wsConCentralSystem || this._wsConCentralSystem.ws.readyState !== WebSocket.OPEN) {
         log.debug(LOG_NAME, this._config.cpName, `Connection not open. Unable to send message ${JSON.stringify(req)}`);
       } else {
         startResponseHandling();
