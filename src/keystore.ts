@@ -30,6 +30,10 @@ export class KeyStore {
     if (element && element[0]) {
       return element[0];
     }
+    const elementFallback = this.data.filter(e => e.id ==  "*");
+    if (elementFallback && elementFallback[0]) {
+      return elementFallback[0];
+    }
     return undefined;
   }
 
