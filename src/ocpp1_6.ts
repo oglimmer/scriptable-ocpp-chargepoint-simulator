@@ -238,8 +238,8 @@ export interface RemoteStartTransactionPayload {
 }
 
 export interface DataTransferPayload {
-  globalId: string,
   vendorId: string,
+  messageId?: string,
   data?: any
 }
 

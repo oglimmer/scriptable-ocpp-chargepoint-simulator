@@ -282,6 +282,22 @@ export class ChargepointOcpp16Json {
   }
 
   /**
+   * Sends a OCPP data transfer message. The Promise resolves when the related OCPP response is received and rejects when no response is
+   * received within the timeout period.
+   *
+   * @param payload data transfer payload object
+   */
+  sendDataTransfer(payload: DataTransferPayload): Promise<void> {
+    log.debug(LOG_NAME, this.config.cpName, 'sendDataTransfer');
+    return this.sendOcpp({
+      messageTypeId: MessageType.CALL,
+      uniqueId: uuidv4(),
+      action: 'DataTransfer',
+      payload
+    });
+  }
+
+  /**
    * Registers a function to implement logic for OCPP's Get Diagnostics message. The function provided must at least call
    * cp.sendResponse(request.uniqueId, {fileName}); to send the a OCPP CALLRESULT message.
    *
