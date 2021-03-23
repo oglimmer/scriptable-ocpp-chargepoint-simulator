@@ -695,15 +695,31 @@ export class ChargepointOcpp16Json {
   CERTIFICATE_SIGNED_OPTIONS_PEM_ENCODER(): AnswerOptions<CertificateSignedPayload> {
     return {
       async requestConverter(resp: OcppRequest<CertificateSignedPayload>): Promise<OcppRequest<CertificateSignedPayload>> {
-        const promisesArr: Array<Promise<string>> = [];
-        const certManagement = new CertManagement();
-        for (let i = 0; i < resp.payload.cert.length; i++) {
-          promisesArr.push(certManagement.convertDerToPem(resp.payload.cert[i]));
+        if (resp.payload.cert) {
+          const promisesArr: Array<Promise<string>> = [];
+          const certManagement = new CertManagement();
+          for (let i = 0; i < resp.payload.cert.length; i++) {
+            promisesArr.push(certManagement.convertDerToPem(resp.payload.cert[i]));
+          }
+          return Promise.all(promisesArr).then(pemEncodedCertsArray => {
+            resp.payload.cert = pemEncodedCertsArray;
+            return resp;
+          });
         }
-        return Promise.all(promisesArr).then(pemEncodedCertsArray => {
-          resp.payload.cert = pemEncodedCertsArray;
-          return resp;
-        });
+        else if (resp.payload.messageId == 'CertificateSigned') {
+          const promisesArr: Array<Promise<string>> = [];
+          const certManagement = new CertManagement();
+          for (let i = 0; i < resp.payload.data.cert.length; i++) {
+            promisesArr.push(certManagement.convertDerToPem(resp.payload.data.cert[i]));
+          }
+          return Promise.all(promisesArr).then(pemEncodedCertsArray => {
+            resp.payload.data.cert = pemEncodedCertsArray;
+            return resp;
+          });
+        }
+        else {
+          return Promise.resolve(resp);
+        }
       }
     }
   }

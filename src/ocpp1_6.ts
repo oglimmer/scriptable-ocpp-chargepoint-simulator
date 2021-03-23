@@ -199,7 +199,13 @@ export interface SignCertificateResponse {
 }
 
 export interface CertificateSignedPayload {
-  cert: Array<string>
+  // this is charin
+  cert: Array<string>,
+  // this is has2be
+  messageId: string,
+  data: {
+    cert: Array<string>
+  }
 }
 
 export interface CertificateSignedResponse {
