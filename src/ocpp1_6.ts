@@ -252,3 +252,14 @@ export interface DataTransferPayload {
 export interface RemoteStartTransactionResponse {
   status: string
 }
+
+export interface DeleteCertificatePayload extends Payload {
+  certificateHashData: CertificateHashData;
+}
+
+export interface CertificateHashData {
+  hashAlgorithm: string;
+  issuerNameHash: string;
+  issuerKeyHash: string;
+  serialNumber: string;
+}

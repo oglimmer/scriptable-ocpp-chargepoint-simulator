@@ -31,6 +31,7 @@ import {
   StopTransactionResponse,
   TriggerMessagePayload,
   UpdateFirmwarePayload,
+  DeleteCertificatePayload,
 } from './ocpp1_6';
 import {CertManagement, Csr} from "./cert-management";
 import {KeyStore} from "./keystore";
@@ -434,6 +435,15 @@ export class ChargepointOcpp16Json {
     this.registeredCallbacksExtendedTriggerMessage.set(requestedMessage, cb);
     this.buildExtendedTriggerMessage();
   }
+
+  /**
+  * Registers a function to implement logic for Charin answerDeleteCertificate
+  */
+  answerDeleteCertificate<T>(cb: (request: OcppRequest<DeleteCertificatePayload>) => void, options?: AnswerOptions<T>): void {​​​​​
+    log.debug(LOG_NAME, this.config.cpName, 'answerDeleteCertificate');
+    this.registeredCallbacks.set("DeleteCertificate", {​​​​​cb, options}​​​​​);
+  }​​​​​
+ 
 
   /**
    * Builds the function put into this.registeredCallbacks
