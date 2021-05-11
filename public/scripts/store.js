@@ -54,7 +54,7 @@ define(function(require) {
         state.inputText += 'await cp.sendBootnotification({chargePointVendor: "vendor", chargePointModel: "1"});\n';
       },
       heartbeat(state) {
-        state.inputText += 'const heartbeatFunction = async () => { try { await cp.sendHeartbeat();} catch (e) { console.log(e); } heartbeatInterval = setTimeout(heartbeatFunction, 60000); } let heartbeatInterval = setTimeout(heartbeatFunction, 60000); cp.onClose(() => clearInterval(heartbeatInterval));\n';
+        state.inputText += 'const heartbeatFunction = async () => { try { await cp.sendRecurringHeartbeat();} catch (e) { console.log(e); } heartbeatInterval = setTimeout(heartbeatFunction, 60000); } let heartbeatInterval = setTimeout(heartbeatFunction, 60000); cp.onClose(() => clearInterval(heartbeatInterval));\n';
       },
       statusNotification(state) {
         state.inputText += 'await cp.sendStatusNotification({connectorId: 0, errorCode: "NoError", status: "Available"});\n' +
