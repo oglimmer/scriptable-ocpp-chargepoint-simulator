@@ -301,8 +301,7 @@ export class ChargepointOcpp16Json {
    * Sends a OCPP meter values message. This method is a proxy to meterValues() and is used for sending meter values recurringly.
    */
    sendRecurringMeterValues(meterValue: string): Promise<void> {
-    console.log("Recurring Meter Values", this.config.currentChargepointStatus, this.isSendingRecurringMeterValuesEnabled);
-    if(this.config.currentChargepointStatus === "Charging" && this.isSendingRecurringMeterValuesEnabled) {
+    if(this.config.currentChargepointStatus === "Charging" && this.isSendingRecurringMeterValuesEnabled()) {
       return this.meterValues({connectorId: 1, transactionId: this.transaction.transactionId, meterValue: [{ timestamp: new Date().toISOString() , sampledValue: [{value: String(this.incrementAndGetCurrentMeterValue(10)) }] }]});
     } else {
       return Promise.resolve();
