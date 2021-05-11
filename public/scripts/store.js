@@ -125,7 +125,7 @@ define(function(require) {
       },
       updateBackendRecurringEventsConfig(state) {
         state.inputText += 'await cp.configureSendingRecurringHeartbeats(' + state.sendHeartbeatsRegularly + ');\n'
-        + 'await cp.configureSendingRecurringMeterValues(' + state.sendMeterValuesRegularly + ');';
+        + 'await cp.configureSendingRecurringMeterValues(' + state.sendMeterValuesRegularly + ');\n';
       },
       updateSendHeartbeatsRegularly(state, value) {
         state.sendHeartbeatsRegularly = value;
