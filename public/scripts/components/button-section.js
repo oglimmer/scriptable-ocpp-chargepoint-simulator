@@ -4,7 +4,21 @@ define(function (require) {
   let template = `
     <nav class="panel">
       <p class="panel-heading">
-      Command Helper (<button v-on:click="openDocs" class="button is-small is-rounded">Docs</button>)
+      Command Helper (
+        <button v-on:click="openDocs" class="button is-small is-rounded">Docs</button>
+        &nbsp;
+        <label class="checkbox">
+            <input type="checkbox" id="checkbox1" v-model="sendHeartbeatsRegularly">
+            Send Heartbeats continuously
+        </label>
+        &nbsp;
+        <label class="checkbox">
+            <input type="checkbox" id="checkbox2" v-model="sendMeterValuesRegularly">
+            Send MeterValues continuously during Transaction
+        </label>
+        &nbsp;
+        <button v-on:click="updateRecurringEventsConfig" class="button is-primary">Update Backend</button>
+        )
     </p>
     <div class="panel-block">
       <button v-on:click="startup" class="button is-primary">Startup</button> &nbsp;
@@ -21,6 +35,24 @@ define(function (require) {
   Vue.component('buttonSection', {
     props: [],
     template: template,
+    computed: {
+      sendHeartbeatsRegularly: {
+        get() {
+          return this.$store.state.sendHeartbeatsRegularly;
+        },
+        set(value) {
+          this.$store.commit('updateSendHeartbeatsRegularly', value);
+        }
+      },
+      sendMeterValuesRegularly: {
+        get() {
+          return this.$store.state.sendMeterValuesRegularly;
+        },
+        set(value) {
+          this.$store.commit('updateSendMeterValuesRegularly', value);
+        }
+      }
+    },
     methods: {
       startup: function() {
         this.$store.commit('startup');
@@ -48,6 +80,9 @@ define(function (require) {
       },
       openDocs: function () {
         window.open('docs', '_blank');
+      },
+      updateRecurringEventsConfig: function() {
+        this.$store.commit('updateBackendRecurringEventsConfig');
       }
     }
   });

@@ -87,6 +87,7 @@ interface OcppRequestWithOptions<T> {
  * Implements an OCPP 1.6 JSON speaking Chargepoint. This is the main API for a Chargepoint.
  */
 export class ChargepointOcpp16Json {
+  [x: string]: any;
 
   private config: Config = new Config();
 
@@ -187,6 +188,19 @@ export class ChargepointOcpp16Json {
   }
 
   /**
+   * Sends a OCPP heartbeat message. This method is a proxy to sendHeartbeat() and is used for sending heartbeats recurringly.
+   */
+   sendRecurringHeartbeat(): Promise<void> {
+     if(this.isSendingRecurringHeartbeatsEnabled()) {
+       return this.sendHeartbeat();
+     } else {
+       return Promise.resolve();
+     }
+  }
+
+
+
+  /**
    * Sends a OCPP boot notification message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
    *
@@ -210,6 +224,7 @@ export class ChargepointOcpp16Json {
    */
   sendStatusNotification(payload: StatusNotificationPayload): Promise<void> {
     log.debug(LOG_NAME, this.config.cpName, 'sendStatusNotification');
+    this.config.currentChargepointStatus = payload ? payload.status : undefined; 
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -281,6 +296,18 @@ export class ChargepointOcpp16Json {
       payload
     });
   }
+
+  /**
+   * Sends a OCPP meter values message. This method is a proxy to meterValues() and is used for sending meter values recurringly.
+   */
+   sendRecurringMeterValues(meterValue: string): Promise<void> {
+    console.log("Recurring Meter Values", this.config.currentChargepointStatus, this.isSendingRecurringMeterValuesEnabled);
+    if(this.config.currentChargepointStatus === "Charging" && this.isSendingRecurringMeterValuesEnabled) {
+      return this.meterValues({connectorId: 1, transactionId: this.transaction.transactionId, meterValue: [{ timestamp: new Date().toISOString() , sampledValue: [{value: String(this.incrementAndGetCurrentMeterValue(10)) }] }]});
+    } else {
+      return Promise.resolve();
+    }
+ }
 
   /**
    * Sends a OCPP data transfer message. The Promise resolves when the related OCPP response is received and rejects when no response is
@@ -660,6 +687,31 @@ export class ChargepointOcpp16Json {
 
   keystore(): KeyStore {
     return this.config.keyStore;
+  }
+
+  currentMeterValue(): number {
+    return this.config.currentMeterValue;
+  }
+
+  isSendingRecurringHeartbeatsEnabled(): boolean {
+    return this.config.sendRecurringHeartbeats;
+  }
+
+  isSendingRecurringMeterValuesEnabled(): boolean {
+    return this.config.sendRecurringMeterValues;
+  }
+
+  configureSendingRecurringHeartbeats(enabled: boolean) {
+    this.config.sendRecurringHeartbeats = enabled;
+  }
+
+  configureSendingRecurringMeterValues(enabled: boolean) {
+    this.config.sendRecurringMeterValues = enabled;
+  }
+
+  incrementAndGetCurrentMeterValue(amount: number): string {
+    this.config.currentMeterValue += amount;
+    return String(this.config.currentMeterValue);
   }
 
   /**

@@ -3,14 +3,23 @@ define(function() {
 const bootResp = await cp.sendBootnotification({ chargePointVendor: 'vendor', chargePointModel: '1' });
 const heartbeatFunction = async () => {
   try {
-    await cp.sendHeartbeat();
+    await cp.sendRecurringHeartbeat();
   } catch (e) {
     console.log(e);
   }
   heartbeatInterval = setTimeout(heartbeatFunction, bootResp.interval * 1000);
 }
 let heartbeatInterval = setTimeout(heartbeatFunction, 1000);
-cp.onClose(() => clearInterval(heartbeatInterval));
+const meterValueFunction = async () => {
+  try {
+    await cp.sendRecurringMeterValues();
+  } catch (e) {
+    console.log(e);
+  }
+  meterValueInterval = setTimeout(meterValueFunction, bootResp.interval * 1000);
+}
+let meterValueInterval = setTimeout(meterValueFunction, 1000);
+cp.onClose(() => {clearInterval(heartbeatInterval); clearInterval(meterValueInterval);});
 await cp.sendStatusNotification({ connectorId: 0, errorCode: 'NoError', status: 'Available' });
 await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Available' });
 cp.answerGetDiagnostics(async (request) => {
@@ -81,16 +90,16 @@ cp.answerRemoteStartTransaction(async (request) => {
     cp.transaction = await cp.startTransaction({
       connectorId: 1,
       idTag: request.payload['idTag'],
-      meterStart: 1377,
-      timestamp: '2020-06-30T12:26:57.167Z',
+      meterStart: cp.incrementAndGetCurrentMeterValue(0),
+      timestamp: new Date().toISOString(),
     });
     await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Charging' });
     await cp.meterValues({
       connectorId: 1,
       transactionId: cp.transaction.transactionId,
       meterValue: [{
-        timestamp: '2020-06-30T12:27:03.198Z',
-        sampledValue: [{ value: '1387' }],
+        timestamp: new Date().toISOString(),
+        sampledValue: [{ value: cp.incrementAndGetCurrentMeterValue(10) }],
       }],
     });
   }
@@ -99,7 +108,7 @@ cp.answerRemoteStopTransaction(async (request) => {
   await cp.sendResponse(request.uniqueId, { status: 'Accepted' });
   await cp.stopTransaction({
     transactionId: cp.transaction.transactionId,
-    meterStop: 1399,
+    meterStop: cp.incrementAndGetCurrentMeterValue(10),
     timestamp: new Date().toISOString(),
   });
   await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Finishing' });

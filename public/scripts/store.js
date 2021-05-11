@@ -34,6 +34,8 @@ define(function(require) {
       cpName: '',
       ocppMessages: [],
       hideHeartbeats: false,
+      sendHeartbeatsRegularly: true,
+      sendMeterValuesRegularly: false,
       commandInProgress: false,
     },
     mutations: {
@@ -63,16 +65,16 @@ define(function(require) {
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Preparing"});\n';
       },
       startTransaction(state) {
-        state.inputText += 'cp.transaction = await cp.startTransaction({connectorId: 1, idTag: "ccc", meterStart: 1377, timestamp: "' + new Date().toISOString() + '"});\n' +
+        state.inputText += 'cp.transaction = await cp.startTransaction({connectorId: 1, idTag: "ccc", meterStart: cp.incrementAndGetCurrentMeterValue(0), timestamp: "' + new Date().toISOString() + '"});\n' +
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Charging"});\n';
       },
       stopTransaction(state) {
-        state.inputText += 'await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: 1399, timestamp: "' + new Date().toISOString() + '"});\n' +
+        state.inputText += 'await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: cp.incrementAndGetCurrentMeterValue(10), timestamp: "' + new Date().toISOString() + '"});\n' +
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Finishing"});\n' +
           'await cp.sendStatusNotification({connectorId: 1, errorCode: "NoError", status: "Available"});\n';
       },
       meterValues(state) {
-        state.inputText += 'await cp.meterValues({connectorId: 1, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: "' + new Date().toISOString() + '", sampledValue: [{value: 1387}] }]});\n';
+        state.inputText += 'await cp.meterValues({connectorId: 1, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: "' + new Date().toISOString() + '", sampledValue: [{value: cp.incrementAndGetCurrentMeterValue(10)}] }]});\n';
       },
       updateWsStatus(state, value) {
         if (state.wsStatusLastId <= value.id) {
@@ -120,6 +122,16 @@ define(function(require) {
       },
       hideHeartbeats(state, value) {
         state.hideHeartbeats = value;
+      },
+      updateBackendRecurringEventsConfig(state) {
+        state.inputText += 'await cp.configureSendingRecurringHeartbeats(' + state.sendHeartbeatsRegularly + ');\n'
+        + 'await cp.configureSendingRecurringMeterValues(' + state.sendMeterValuesRegularly + ');';
+      },
+      updateSendHeartbeatsRegularly(state, value) {
+        state.sendHeartbeatsRegularly = value;
+      },
+      updateSendMeterValuesRegularly(state, value) {
+        state.sendMeterValuesRegularly = value;
       },
       clearOcppMessages(state, value) {
         state.ocppMessages = [];
