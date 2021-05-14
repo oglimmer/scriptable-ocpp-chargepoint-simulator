@@ -14,9 +14,6 @@ export class Config {
       this.cpName = this.url.substr(this.url.lastIndexOf('/') + 1);
     }
     this.keyStore = new KeyStore(this.cpName);
-    this.sendRecurringHeartbeats = true;
-    this.sendRecurringMeterValues = false;
-    this.currentMeterValue = 0;
   }
 
 }

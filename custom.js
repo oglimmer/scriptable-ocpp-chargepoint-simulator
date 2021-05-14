@@ -1,7 +1,7 @@
 if(!process.env.WS_CONNECT_URL) {
   throw new Error("env variable WS_CONNECT_URL not set!");
 }
-let cp, heartbeatTimer, meterValueTimer;
+let cp, heartbeatTimer;
 try {
   // WebSocket Connect (no OCPP)
   cp = await connect(process.env.WS_CONNECT_URL);
@@ -15,9 +15,7 @@ try {
   const bootResp = await cp.sendBootnotification(
     {chargePointVendor: "vendor", chargePointModel: "1"});
   await cp.sendHeartbeat();
-  heartbeatTimer = setInterval(() => cp.sendRecurringHeartbeat(),
-    bootResp.interval > 0 ? bootResp.interval * 1000 : 60000);
-  meterValueTimer = setInterval(() => cp.sendRecurringMeterValues(),
+  heartbeatTimer = setInterval(() => cp.sendHeartbeat(),
     bootResp.interval > 0 ? bootResp.interval * 1000 : 60000);
   await cp.sendStatusNotification(
     {connectorId: 0, errorCode: "NoError", status: "Available"});

@@ -58,9 +58,11 @@ define(function(require) {
         + 'cp.sendRecurringMeterValues = false;\n'
         + 'cp.currentMeterValue = 0;\n'
         + 'cp.connectorIdForTx = 1;\n'
-        + 'cp.incrementAndGetCurrentMeterValue = (amount: number) => { cp.currentMeterValue += amount; return String(cp.currentMeterValue); };\n'
-        + 'const heartbeatFunction = async () => { try { if(cp.sendHeartbeat) { await cp.sendHeartbeat(); } } catch (e) { console.log(e); } heartbeatInterval = setTimeout(heartbeatFunction, 60000); } let heartbeatInterval = setTimeout(heartbeatFunction, 60000);\n';
-        + 'const meterValueFunction = async () => { try { if(cp.transaction != null && cp.sendRecurringMeterValues) { await cp.meterValues({connectorId: cp.connectorIdForTx, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: new Date().toISOString() , sampledValue: [{value: String(cp.incrementAndGetCurrentMeterValue(10)) }] }]}); } } catch (e) { console.log(e); } meterValueInterval = setTimeout(meterValueFunction, 60000); } let meterValueInterval = setTimeout(meterValueFunction, 60000);\n'
+        + 'cp.incrementAndGetCurrentMeterValue = (amount) => { cp.currentMeterValue += amount; return String(cp.currentMeterValue); };\n'
+        + 'const heartbeatFunction = async () => { try { if(cp.sendRecurringHeartbeats) { await cp.sendHeartbeat(); } } catch (e) { console.log(e); } heartbeatInterval = setTimeout(heartbeatFunction, 60000); }\n'
+        + 'let heartbeatInterval = setTimeout(heartbeatFunction, 60000);\n'
+        + 'const meterValueFunction = async () => { try { if(cp.transaction != null && cp.sendRecurringMeterValues) { await cp.meterValues({connectorId: cp.connectorIdForTx, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: new Date().toISOString() , sampledValue: [{value: String(cp.incrementAndGetCurrentMeterValue(10)) }] }]}); } } catch (e) { console.log(e); } meterValueInterval = setTimeout(meterValueFunction, 60000); }\n'
+        + 'let meterValueInterval = setTimeout(meterValueFunction, 60000);\n'
         + 'cp.onClose(() => {clearInterval(heartbeatInterval); clearInterval(meterValueInterval);});\n';
 
       },

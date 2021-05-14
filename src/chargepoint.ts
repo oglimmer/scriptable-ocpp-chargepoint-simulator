@@ -87,7 +87,6 @@ interface OcppRequestWithOptions<T> {
  * Implements an OCPP 1.6 JSON speaking Chargepoint. This is the main API for a Chargepoint.
  */
 export class ChargepointOcpp16Json {
-  [x: string]: any;
 
   private config: Config = new Config();
 
@@ -211,7 +210,6 @@ export class ChargepointOcpp16Json {
    */
   sendStatusNotification(payload: StatusNotificationPayload): Promise<void> {
     log.debug(LOG_NAME, this.config.cpName, 'sendStatusNotification');
-    this.config.currentChargepointStatus = payload ? payload.status : undefined; 
     return this.sendOcpp({
       messageTypeId: MessageType.CALL,
       uniqueId: uuidv4(),
@@ -283,17 +281,6 @@ export class ChargepointOcpp16Json {
       payload
     });
   }
-
-  /**
-   * Sends a OCPP meter values message. This method is a proxy to meterValues() and is used for sending meter values recurringly.
-   */
-   sendRecurringMeterValues(meterValue: string): Promise<void> {
-    if(this.config.currentChargepointStatus === "Charging" && this.isSendingRecurringMeterValuesEnabled()) {
-      return this.meterValues({connectorId: 1, transactionId: this.transaction.transactionId, meterValue: [{ timestamp: new Date().toISOString() , sampledValue: [{value: String(this.incrementAndGetCurrentMeterValue(10)) }] }]});
-    } else {
-      return Promise.resolve();
-    }
- }
 
   /**
    * Sends a OCPP data transfer message. The Promise resolves when the related OCPP response is received and rejects when no response is
