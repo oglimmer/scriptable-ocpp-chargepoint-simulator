@@ -188,19 +188,6 @@ export class ChargepointOcpp16Json {
   }
 
   /**
-   * Sends a OCPP heartbeat message. This method is a proxy to sendHeartbeat() and is used for sending heartbeats recurringly.
-   */
-   sendRecurringHeartbeat(): Promise<void> {
-     if(this.isSendingRecurringHeartbeatsEnabled()) {
-       return this.sendHeartbeat();
-     } else {
-       return Promise.resolve();
-     }
-  }
-
-
-
-  /**
    * Sends a OCPP boot notification message. The Promise resolves when the related OCPP response is received and rejects when no response is
    * received within the timeout period.
    *
@@ -686,31 +673,6 @@ export class ChargepointOcpp16Json {
 
   keystore(): KeyStore {
     return this.config.keyStore;
-  }
-
-  currentMeterValue(): number {
-    return this.config.currentMeterValue;
-  }
-
-  isSendingRecurringHeartbeatsEnabled(): boolean {
-    return this.config.sendRecurringHeartbeats;
-  }
-
-  isSendingRecurringMeterValuesEnabled(): boolean {
-    return this.config.sendRecurringMeterValues;
-  }
-
-  configureSendingRecurringHeartbeats(enabled: boolean) {
-    this.config.sendRecurringHeartbeats = enabled;
-  }
-
-  configureSendingRecurringMeterValues(enabled: boolean) {
-    this.config.sendRecurringMeterValues = enabled;
-  }
-
-  incrementAndGetCurrentMeterValue(amount: number): string {
-    this.config.currentMeterValue += amount;
-    return String(this.config.currentMeterValue);
   }
 
   /**

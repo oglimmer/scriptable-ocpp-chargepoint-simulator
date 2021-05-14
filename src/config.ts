@@ -5,10 +5,6 @@ export class Config {
   keyStore: KeyStore;
   url: string;
   cpName?: string;
-  sendRecurringHeartbeats: boolean;
-  sendRecurringMeterValues: boolean;
-  currentMeterValue: number;
-  currentChargepointStatus: string;
 
   init(url: string, cpName?: string) {
     this.url = url;

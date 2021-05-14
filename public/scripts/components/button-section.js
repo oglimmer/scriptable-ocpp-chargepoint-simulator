@@ -16,14 +16,12 @@ define(function (require) {
             <input type="checkbox" id="checkbox2" v-model="sendMeterValuesRegularly">
             Send MeterValues continuously during Transaction
         </label>
-        &nbsp;
-        <button v-on:click="updateRecurringEventsConfig" class="button is-primary">Update Backend</button>
         )
     </p>
     <div class="panel-block">
       <button v-on:click="startup" class="button is-primary">Startup</button> &nbsp;
       <button v-on:click="bootnotification" class="button is-link">Bootnotification</button> &nbsp;
-      <button v-on:click="heartbeat" class="button is-link">heartbeat</button> &nbsp;
+      <button v-on:click="initialize" class="button is-link">initialize cp</button> &nbsp;
       <button v-on:click="statusNotification" class="button is-link">statusNotification</button> &nbsp;
       <button v-on:click="authorize" class="button is-info">authorize</button> &nbsp;
       <button v-on:click="startTransaction" class="button is-info">startTransaction</button> &nbsp;
@@ -60,8 +58,8 @@ define(function (require) {
       bootnotification: function() {
         this.$store.commit('bootnotification');
       },
-      heartbeat: function() {
-        this.$store.commit('heartbeat');
+      initialize: function() {
+        this.$store.commit('initialize');
       },
       statusNotification: function() {
         this.$store.commit('statusNotification');
@@ -80,9 +78,6 @@ define(function (require) {
       },
       openDocs: function () {
         window.open('docs', '_blank');
-      },
-      updateRecurringEventsConfig: function() {
-        this.$store.commit('updateBackendRecurringEventsConfig');
       }
     }
   });
