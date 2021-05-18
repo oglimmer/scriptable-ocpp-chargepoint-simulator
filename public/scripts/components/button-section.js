@@ -4,12 +4,24 @@ define(function (require) {
   let template = `
     <nav class="panel">
       <p class="panel-heading">
-      Command Helper (<button v-on:click="openDocs" class="button is-small is-rounded">Docs</button>)
+      Command Helper (
+        <button v-on:click="openDocs" class="button is-small is-rounded">Docs</button>
+        &nbsp;
+        <label class="checkbox">
+            <input type="checkbox" id="checkbox1" v-model="sendHeartbeatsRegularly">
+            Send Heartbeats continuously
+        </label>
+        &nbsp;
+        <label class="checkbox">
+            <input type="checkbox" id="checkbox2" v-model="sendMeterValuesRegularly">
+            Send MeterValues continuously during Transaction
+        </label>
+        )
     </p>
     <div class="panel-block">
       <button v-on:click="startup" class="button is-primary">Startup</button> &nbsp;
       <button v-on:click="bootnotification" class="button is-link">Bootnotification</button> &nbsp;
-      <button v-on:click="heartbeat" class="button is-link">heartbeat</button> &nbsp;
+      <button v-on:click="initialize" class="button is-link">initialize cp</button> &nbsp;
       <button v-on:click="statusNotification" class="button is-link">statusNotification</button> &nbsp;
       <button v-on:click="authorize" class="button is-info">authorize</button> &nbsp;
       <button v-on:click="startTransaction" class="button is-info">startTransaction</button> &nbsp;
@@ -21,6 +33,24 @@ define(function (require) {
   Vue.component('buttonSection', {
     props: [],
     template: template,
+    computed: {
+      sendHeartbeatsRegularly: {
+        get() {
+          return this.$store.state.sendHeartbeatsRegularly;
+        },
+        set(value) {
+          this.$store.commit('updateSendHeartbeatsRegularly', value);
+        }
+      },
+      sendMeterValuesRegularly: {
+        get() {
+          return this.$store.state.sendMeterValuesRegularly;
+        },
+        set(value) {
+          this.$store.commit('updateSendMeterValuesRegularly', value);
+        }
+      }
+    },
     methods: {
       startup: function() {
         this.$store.commit('startup');
@@ -28,8 +58,8 @@ define(function (require) {
       bootnotification: function() {
         this.$store.commit('bootnotification');
       },
-      heartbeat: function() {
-        this.$store.commit('heartbeat');
+      initialize: function() {
+        this.$store.commit('initialize');
       },
       statusNotification: function() {
         this.$store.commit('statusNotification');

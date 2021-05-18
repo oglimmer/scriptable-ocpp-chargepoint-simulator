@@ -1,18 +1,57 @@
 define(function() {
   return `
 const bootResp = await cp.sendBootnotification({ chargePointVendor: 'vendor', chargePointModel: '1' });
+if(bootResp.interval < 30) {
+  console.log("Heartbeat interval might be too low. Current value in seconds: ", bootResp.interval);
+}
+
+// give the chargepoint initial state
+
+cp.sendRecurringHeartbeats = true;
+cp.sendRecurringMeterValues = false;
+cp.currentMeterValue = 0;
+cp.connectorIdForTx = 1;
+cp.incrementAndGetCurrentMeterValue = (amount) => {
+  cp.currentMeterValue += amount;
+  return String(cp.currentMeterValue);
+};
+
+// Activate sending periodic Heartbeats
+
 const heartbeatFunction = async () => {
   try {
-    await cp.sendHeartbeat();
+    if(cp.sendRecurringHeartbeats) {
+      await cp.sendHeartbeat();
+    }
   } catch (e) {
     console.log(e);
   }
   heartbeatInterval = setTimeout(heartbeatFunction, bootResp.interval * 1000);
 }
 let heartbeatInterval = setTimeout(heartbeatFunction, 1000);
-cp.onClose(() => clearInterval(heartbeatInterval));
+
+// Activate sending periodic MeterValues (during active transaction)
+
+const meterValueFunction = async () => {
+  try {
+    if(cp.transaction != null && cp.sendRecurringMeterValues) {
+      await cp.meterValues({connectorId: cp.connectorIdForTx, transactionId: cp.transaction.transactionId, meterValue: [{ timestamp: new Date().toISOString() , sampledValue: [{value: String(cp.incrementAndGetCurrentMeterValue(10)) }] }]});
+    }
+  } catch (e) {
+    console.log(e);
+  }
+  meterValueInterval = setTimeout(meterValueFunction, bootResp.interval * 1000);
+}
+let meterValueInterval = setTimeout(meterValueFunction, 1000);
+cp.onClose(() => {clearInterval(heartbeatInterval); clearInterval(meterValueInterval);});
+
+// Send 'Available' on all possible connectors
+
 await cp.sendStatusNotification({ connectorId: 0, errorCode: 'NoError', status: 'Available' });
 await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Available' });
+
+// Define CP functionality
+
 cp.answerGetDiagnostics(async (request) => {
   const fileName = 'foo.' + new Date().toISOString() + '.txt';
   cp.sendResponse(request.uniqueId, { fileName });
@@ -77,20 +116,21 @@ cp.answerRemoteStartTransaction(async (request) => {
   await cp.sendResponse(request.uniqueId, { status: 'Accepted' });
   const statusResponse = await cp.sendAuthorize({ idTag: request.payload['idTag'] });
   if (statusResponse.idTagInfo.status === 'Accepted') {
-    await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Preparing' });
+    cp.connectorIdForTx = 1;
+    await cp.sendStatusNotification({ connectorId: cp.connectorIdForTx, errorCode: 'NoError', status: 'Preparing' });
     cp.transaction = await cp.startTransaction({
-      connectorId: 1,
+      connectorId: cp.connectorIdForTx,
       idTag: request.payload['idTag'],
-      meterStart: 1377,
-      timestamp: '2020-06-30T12:26:57.167Z',
+      meterStart: cp.incrementAndGetCurrentMeterValue(0),
+      timestamp: new Date().toISOString(),
     });
     await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Charging' });
     await cp.meterValues({
-      connectorId: 1,
+      connectorId: cp.connectorIdForTx,
       transactionId: cp.transaction.transactionId,
       meterValue: [{
-        timestamp: '2020-06-30T12:27:03.198Z',
-        sampledValue: [{ value: '1387' }],
+        timestamp: new Date().toISOString(),
+        sampledValue: [{ value: cp.incrementAndGetCurrentMeterValue(10) }],
       }],
     });
   }
@@ -99,9 +139,10 @@ cp.answerRemoteStopTransaction(async (request) => {
   await cp.sendResponse(request.uniqueId, { status: 'Accepted' });
   await cp.stopTransaction({
     transactionId: cp.transaction.transactionId,
-    meterStop: 1399,
+    meterStop: cp.incrementAndGetCurrentMeterValue(10),
     timestamp: new Date().toISOString(),
   });
+  cp.transaction = null;
   await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Finishing' });
   await cp.sendStatusNotification({ connectorId: 1, errorCode: 'NoError', status: 'Available' });
 });
