@@ -719,11 +719,17 @@ export class ChargepointOcpp16Json {
         else if (resp.payload.messageId == 'CertificateSigned') {
           const promisesArr: Array<Promise<string>> = [];
           const certManagement = new CertManagement();
-          for (let i = 0; i < resp.payload.data.cert.length; i++) {
-            promisesArr.push(certManagement.convertDerToPem(resp.payload.data.cert[i]));
+          const dataAsObj = typeof resp.payload.data === 'string' ? JSON.parse(resp.payload.data) : resp.payload.data;
+          for (let i = 0; i < dataAsObj.cert.length; i++) {
+            promisesArr.push(certManagement.convertDerToPem(dataAsObj.cert[i]));
           }
           return Promise.all(promisesArr).then(pemEncodedCertsArray => {
-            resp.payload.data.cert = pemEncodedCertsArray;
+            if (typeof resp.payload.data === 'string') {
+              dataAsObj.cert = pemEncodedCertsArray;
+              resp.payload.data = JSON.stringify(dataAsObj);
+            } else {
+              resp.payload.data.cert = pemEncodedCertsArray;
+            }
             return resp;
           });
         }
