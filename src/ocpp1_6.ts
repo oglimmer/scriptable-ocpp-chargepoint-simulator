@@ -205,7 +205,7 @@ export interface CertificateSignedPayload {
   messageId: string,
   data: {
     cert: Array<string>
-  }
+  } | string
 }
 
 export interface CertificateSignedResponse {
