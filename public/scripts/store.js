@@ -46,6 +46,8 @@ define(function(require) {
         let text = '';
         if (state.wsStatus.startsWith('closed')) {
           text += `cp = await connect('${state.connectTemplate}/${state.cpName}');\n`;
+          text += `cp.cpName = '${state.cpName}';\n`;
+          text += `cp.connectTemplate = '${state.connectTemplate}';\n`;
         }
         text += require('./startup-config');
         state.inputText = text;
@@ -80,9 +82,11 @@ define(function(require) {
           'await cp.sendStatusNotification({connectorId: cp.connectorIdForTx, errorCode: "NoError", status: "Charging"});\n';
       },
       stopTransaction(state) {
-        state.inputText += 'await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: cp.incrementAndGetCurrentMeterValue(10), timestamp: "' + new Date().toISOString() + '"});\n' +
-          'cp.transaction = null;\n' + 
-          'await cp.sendStatusNotification({connectorId: cp.connectorIdForTx, errorCode: "NoError", status: "Finishing"});\n' +
+        state.inputText += 'await cp.stopTransaction({transactionId: cp.transaction.transactionId, meterStop: cp.incrementAndGetCurrentMeterValue(10), timestamp: "'
+          + new Date().toISOString() + '"});\n' +
+          'cp.transaction = null;\n' +
+          'await cp.sendStatusNotification({connectorId: cp.connectorIdForTx, errorCode: "NoError", status: "Finishing"});\n'
+          +
           'await cp.sendStatusNotification({connectorId: cp.connectorIdForTx, errorCode: "NoError", status: "Available"});\n';
       },
       meterValues(state) {
@@ -91,7 +95,9 @@ define(function(require) {
       updateWsStatus(state, value) {
         if (state.wsStatusLastId <= value.id) {
           if (state.wsStatus === '' && value.description.startsWith('closed')) {
-            state.inputText = `cp = await connect('${state.connectTemplate}/${state.cpName}');\n`;
+            state.inputText = `cp = await connect('${state.connectTemplate}/${state.cpName}');\n`
+              + `cp.cpName = '${state.cpName}';\n`
+              + `cp.connectTemplate = '${state.connectTemplate}';\n`;
           }
           state.wsStatus = value.description;
           state.wsStatusLastId = value.id;
