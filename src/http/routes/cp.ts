@@ -6,6 +6,7 @@ import {wsConCentralSystemRepository, wsConRemoteConsoleRepository} from '../../
 import * as util from 'util';
 import {QueueSubmitLayer} from "../../queue-submit-layer";
 import {log} from '../../log';
+import {KeyStoreElement} from "../../keystore";
 
 const LOG_NAME = 'ocpp-chargepoint-simulator:simulator:cp-route';
 
@@ -30,7 +31,7 @@ cpRouter.post('/:cpName?', async (req, res) => {
     return;
   }
   try {
-    const enhChargepointFactory = (url: string): Promise<ChargepointOcpp16Json> => chargepointFactory(url, cpName);
+    const enhChargepointFactory = (url: string, keyStoreElement?: KeyStoreElement): Promise<ChargepointOcpp16Json> => chargepointFactory(url, cpName, keyStoreElement);
     const evalResp = _eval(javaScript, 'request-body', {}, true);
     const wsConCentralSystem = wsConCentralSystemRepository.get(cpName) as QueueSubmitLayer;
     const chargepointOcpp16Json = wsConCentralSystem ? wsConCentralSystem.chargepointOcpp16Json : undefined;

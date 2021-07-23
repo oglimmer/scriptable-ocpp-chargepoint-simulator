@@ -148,7 +148,7 @@ export class ChargepointOcpp16Json {
    * @returns a Promise which resolves when the connection is established and rejects when the connection cannot be established.
    */
   connect(url: string, cpName?: string, keyStoreElement?: KeyStoreElement): Promise<void> {
-    log.debug(LOG_NAME, cpName, 'connect');
+    log.debug(LOG_NAME, cpName, 'connect as ' + cpName + " with " + JSON.stringify(keyStoreElement));
     this.config.init(url, cpName, keyStoreElement);
     return this.wsConCentralSystem.connect();
   }
@@ -746,11 +746,11 @@ export class ChargepointOcpp16Json {
  *
  * @param url WebSocket Url to connect to
  */
-export function chargepointFactory(url: string, cpName?: string): Promise<ChargepointOcpp16Json> {
+export function chargepointFactory(url: string, cpName?: string, keyStoreElement?: KeyStoreElement): Promise<ChargepointOcpp16Json> {
   const wsConCentralSystemFromRepository = wsConCentralSystemRepository.get(cpName);
   if (wsConCentralSystemFromRepository && wsConCentralSystemFromRepository.readyState === WebSocket.OPEN) {
     wsConCentralSystemFromRepository.close();
   }
   const cp = new ChargepointOcpp16Json();
-  return cp.connect(url, cpName).then(() => cp);
+  return cp.connect(url, cpName, keyStoreElement).then(() => cp);
 }
