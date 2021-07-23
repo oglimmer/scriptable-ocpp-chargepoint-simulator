@@ -86,6 +86,7 @@ while [[ "${1:-}" =~ ^- ]] ; do
       ;;
     --cadir)
       export SSL_CERT_DIR=$2
+      echo "SSL_CERT_DIR=$SSL_CERT_DIR"
       shift
       ;;
     --o)
@@ -115,6 +116,7 @@ if [ -n "$DEV" ]; then
 else
   if [ -n "${SSL_CERT_FILE:-}" ] || [ -n "${SSL_CERT_DIR:-}" ]; then
     # nasty special case, but the environment variable SSL_CERT_FILE or SSL_CERT_DIR requires to also set --use-openssl-ca on node (not ts-node)
+    echo "node --use-openssl-ca ./node_modules/.bin/ts-node --project ./tsconfig.release.json ./src/main.ts $STDIN $@"
     node --use-openssl-ca ./node_modules/.bin/ts-node --project ./tsconfig.release.json ./src/main.ts $STDIN "$@"
   else
     ./node_modules/.bin/ts-node --project ./tsconfig.release.json ./src/main.ts $STDIN "$@"
