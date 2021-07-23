@@ -88,4 +88,14 @@ export class KeyStore {
     this.setCert(certFilename);
     return [keyFilename, certFilename];
   }
+
+  add(keyStoreElement: KeyStoreElement): void {
+    const element = this.data.filter(e => e.id == this.cpName);
+    if (element && element[0]) {
+      element[0].key = keyStoreElement.key;
+      element[0].cert = keyStoreElement.cert;
+    } else {
+      this.data.push(keyStoreElement);
+    }
+  }
 }

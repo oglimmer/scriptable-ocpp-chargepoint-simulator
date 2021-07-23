@@ -13,6 +13,7 @@ usage() {
     --keyStore - json string. Array of objects with keys: id, key, cert. Where id is the cpName, key the filename to the key file, cert the filename to the cert file. All PEM encoded.
     --keyStoreRoot - path where newly created keys/certs are being stored
     --ca - path to PEM encoded CA certificate file
+    --cadir - path to PEM encoded CA certificate dir
     --o - path to a options file which will be sourced
     --h - shows this help
   " 1>&2
@@ -83,6 +84,10 @@ while [[ "${1:-}" =~ ^- ]] ; do
       export SSL_CERT_FILE=$2
       shift
       ;;
+    --cadir)
+      export SSL_CERT_DIR=$2
+      shift
+      ;;
     --o)
       SIMULATOR_OPTS=$2
       shift
@@ -108,8 +113,8 @@ if [ -n "$DEV" ]; then
   [ -n "$STDIN" ] && echo "You cannot combine dev and stdin" && exit 1
   npm run dev "$@"
 else
-  if [ -n "${SSL_CERT_FILE:-}" ]; then
-    # nasty special case, but the environment variable SSL_CLIENT_KEYSTORE requires to also set --use-openssl-ca on node (not ts-node)
+  if [ -n "${SSL_CERT_FILE:-}" ] || [ -n "${SSL_CERT_DIR:-}" ]; then
+    # nasty special case, but the environment variable SSL_CERT_FILE or SSL_CERT_DIR requires to also set --use-openssl-ca on node (not ts-node)
     node --use-openssl-ca ./node_modules/.bin/ts-node --project ./tsconfig.release.json ./src/main.ts $STDIN "$@"
   else
     ./node_modules/.bin/ts-node --project ./tsconfig.release.json ./src/main.ts $STDIN "$@"

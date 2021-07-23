@@ -1,4 +1,4 @@
-import {KeyStore} from "./keystore";
+import {KeyStore, KeyStoreElement} from "./keystore";
 
 export class Config {
 
@@ -6,7 +6,7 @@ export class Config {
   url: string;
   cpName?: string;
 
-  init(url: string, cpName?: string) {
+  init(url: string, cpName?: string, keyStoreElement?: KeyStoreElement) {
     this.url = url;
     if (cpName) {
       this.cpName = cpName;
@@ -14,6 +14,9 @@ export class Config {
       this.cpName = this.url.substr(this.url.lastIndexOf('/') + 1);
     }
     this.keyStore = new KeyStore(this.cpName);
+    if (keyStoreElement) {
+      this.keyStore.add(keyStoreElement);
+    }
   }
 
 }

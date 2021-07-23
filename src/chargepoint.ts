@@ -34,7 +34,7 @@ import {
   DeleteCertificatePayload,
 } from './ocpp1_6';
 import {CertManagement, Csr} from "./cert-management";
-import {KeyStore} from "./keystore";
+import {KeyStore, KeyStoreElement} from "./keystore";
 import * as http from "http";
 import * as express from "express";
 import {IRouter} from "express";
@@ -147,9 +147,9 @@ export class ChargepointOcpp16Json {
    * @param url to connect to. Must start with ws:// or ws://
    * @returns a Promise which resolves when the connection is established and rejects when the connection cannot be established.
    */
-  connect(url: string, cpName?: string): Promise<void> {
+  connect(url: string, cpName?: string, keyStoreElement?: KeyStoreElement): Promise<void> {
     log.debug(LOG_NAME, cpName, 'connect');
-    this.config.init(url, cpName);
+    this.config.init(url, cpName, keyStoreElement);
     return this.wsConCentralSystem.connect();
   }
 
@@ -443,7 +443,7 @@ export class ChargepointOcpp16Json {
     log.debug(LOG_NAME, this.config.cpName, 'answerDeleteCertificate');
     this.registeredCallbacks.set("DeleteCertificate", {​​​​​cb, options}​​​​​);
   }​​​​​
- 
+
 
   /**
    * Builds the function put into this.registeredCallbacks
