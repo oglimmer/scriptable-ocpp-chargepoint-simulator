@@ -36,11 +36,19 @@ expressInit.use((req, res) => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 expressInit.use((err: any, req: express.Request, res: express.Response) => {
   // set locals, only providing error in development
+  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // @ts-ignore
   res.locals.message = err.message;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // @ts-ignore
   res.locals.error = req.app.get('env') === 'development' ? err : {};
 
   // render the error page
+  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // @ts-ignore
   res.status(err.status || 500);
+  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // @ts-ignore
   res.render('error');
 });
 

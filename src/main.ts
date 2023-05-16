@@ -56,6 +56,8 @@ if (process.argv[2]) {
     try {
       const evalResp = _eval(javaScript, 'execute', {}, true);
       axios["FormData"] = FormData; // to post multipart/form-data FormData lib is needed, make it easy to access here
+      // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+      // @ts-ignore
       await evalResp(chargepointFactory, log, axios);
     } catch (e) {
       console.log(e);

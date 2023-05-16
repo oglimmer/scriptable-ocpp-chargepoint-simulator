@@ -439,10 +439,10 @@ export class ChargepointOcpp16Json {
   /**
   * Registers a function to implement logic for Charin answerDeleteCertificate
   */
-  answerDeleteCertificate<T>(cb: (request: OcppRequest<DeleteCertificatePayload>) => void, options?: AnswerOptions<T>): void {​​​​​
+  answerDeleteCertificate<T>(cb: (request: OcppRequest<DeleteCertificatePayload>) => void, options?: AnswerOptions<T>): void {
     log.debug(LOG_NAME, this.config.cpName, 'answerDeleteCertificate');
-    this.registeredCallbacks.set("DeleteCertificate", {​​​​​cb, options}​​​​​);
-  }​​​​​
+    this.registeredCallbacks.set("DeleteCertificate", {cb, options});
+  }
 
 
   /**

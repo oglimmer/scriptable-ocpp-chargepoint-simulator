@@ -35,6 +35,8 @@ cpRouter.post('/:cpName?', async (req, res) => {
     const evalResp = _eval(javaScript, 'request-body', {}, true);
     const wsConCentralSystem = wsConCentralSystemRepository.get(cpName) as QueueSubmitLayer;
     const chargepointOcpp16Json = wsConCentralSystem ? wsConCentralSystem.chargepointOcpp16Json : undefined;
+    // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+    // @ts-ignore
     const returningChargepointOcpp16Json = await evalResp(enhChargepointFactory, chargepointOcpp16Json);
     if (returningChargepointOcpp16Json) {
       wsConCentralSystemRepository.set(cpName, returningChargepointOcpp16Json.wsConCentralSystem);
